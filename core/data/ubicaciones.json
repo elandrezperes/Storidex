@@ -1,0 +1,79 @@
+{
+  "Ecuador": {
+    "Azuay": ["Cuenca", "Gualaceo", "Paute", "Azogues", "Cañar", "Sigsig"],
+    "Pichincha": ["Quito", "Sangolquí", "Cayambe", "Rumiñahui", "Mejía"],
+    "Guayas": ["Guayaquil", "Samborondón", "Durán", "Milagro", "Daule"],
+    "Manabí": ["Manta", "Portoviejo", "Montecristi", "Jipijapa", "Bahía de Caráquez"],
+    "Loja": ["Loja", "Catamayo", "Saraguro", "Macará"],
+    "Chimborazo": ["Riobamba", "Alausí", "Guano", "Chambo"],
+    "Tungurahua": ["Ambato", "Baños", "Pelileo", "Píllaro"],
+    "El Oro": ["Machala", "Santa Rosa", "Huaquillas", "Zaruma"],
+    "Imbabura": ["Ibarra", "Otavalo", "Cotacachi", "Atuntaqui"],
+    "Cotopaxi": ["Latacunga", "Salcedo", "Pujilí", "La Maná"],
+    "Los Ríos": ["Babahoyo", "Quevedo", "Ventanas", "Vinces"],
+    "Santo Domingo": ["Santo Domingo", "La Concordia"],
+    "Santa Elena": ["Santa Elena", "La Libertad", "Salinas"],
+    "Cañar": ["Azogues", "Cañar", "Biblián", "La Troncal"],
+    "Carchi": ["Tulcán", "San Gabriel", "El Ángel"],
+    "Bolívar": ["Guaranda", "Chillanes", "San Miguel"],
+    "Esmeraldas": ["Esmeraldas", "Atacames", "Quinindé"],
+    "Morona Santiago": ["Macas", "Sucúa", "Limón Indanza"],
+    "Napo": ["Tena", "Archidona", "El Chaco"],
+    "Pastaza": ["Puyo", "Mera", "Santa Clara"],
+    "Zamora Chinchipe": ["Zamora", "Yantzaza", "Zumba"],
+    "Orellana": ["Francisco de Orellana", "La Joya de los Sachas"],
+    "Sucumbíos": ["Nueva Loja", "Shushufindi", "Lago Agrio"],
+    "Galápagos": ["Puerto Ayora", "Puerto Baquerizo Moreno"]
+  },
+  "Perú": {
+    "Lima": ["Lima", "Miraflores", "San Isidro", "Barranco", "Callao"],
+    "Arequipa": ["Arequipa", "Camaná", "Mollendo"],
+    "Cusco": ["Cusco", "Urubamba", "Sicuani"],
+    "Piura": ["Piura", "Talara", "Sullana", "Paita"],
+    "La Libertad": ["Trujillo", "Chepén", "Pacasmayo"],
+    "Lambayeque": ["Chiclayo", "Lambayeque", "Ferreñafe"],
+    "Junín": ["Huancayo", "Tarma", "La Merced"],
+    "Puno": ["Puno", "Juliaca", "Ilave"]
+  },
+  "Colombia": {
+    "Cundinamarca": ["Bogotá", "Soacha", "Chía", "Zipaquirá"],
+    "Antioquia": ["Medellín", "Envigado", "Rionegro", "Itagüí"],
+    "Valle del Cauca": ["Cali", "Palmira", "Buenaventura", "Tuluá"],
+    "Atlántico": ["Barranquilla", "Soledad", "Puerto Colombia"],
+    "Bolívar": ["Cartagena", "Turbaco", "Magangué"],
+    "Santander": ["Bucaramanga", "Floridablanca", "Piedecuesta"]
+  },
+  "Chile": {
+    "Región Metropolitana": ["Santiago", "Puente Alto", "Maipú", "Las Condes"],
+    "Valparaíso": ["Valparaíso", "Viña del Mar", "Quilpué"],
+    "Biobío": ["Concepción", "Talcahuano", "Los Ángeles"],
+    "Antofagasta": ["Antofagasta", "Calama", "Tocopilla"]
+  },
+  "Argentina": {
+    "Buenos Aires": ["CABA", "La Plata", "Mar del Plata", "Bahía Blanca"],
+    "Córdoba": ["Córdoba", "Villa Carlos Paz", "Río Cuarto"],
+    "Santa Fe": ["Rosario", "Santa Fe", "Rafaela"],
+    "Mendoza": ["Mendoza", "San Rafael", "Godoy Cruz"]
+  },
+  "México": {
+    "Ciudad de México": ["Ciudad de México", "Iztapalapa", "Coyoacán"],
+    "Jalisco": ["Guadalajara", "Zapopan", "Tlaquepaque"],
+    "Nuevo León": ["Monterrey", "San Pedro Garza García", "Apodaca"],
+    "Puebla": ["Puebla", "Tehuacán", "Cholula"],
+    "Yucatán": ["Mérida", "Valladolid", "Progreso"]
+  },
+  "España": {
+    "Madrid": ["Madrid", "Alcalá de Henares", "Getafe"],
+    "Cataluña": ["Barcelona", "Girona", "Tarragona", "Lleida"],
+    "Andalucía": ["Sevilla", "Málaga", "Granada", "Córdoba"],
+    "Valencia": ["Valencia", "Alicante", "Castellón"]
+  },
+  "Estados Unidos": {
+    "Florida": ["Miami", "Orlando", "Tampa", "Jacksonville"],
+    "Nueva York": ["Nueva York", "Brooklyn", "Queens", "Buffalo"],
+    "California": ["Los Ángeles", "San Francisco", "San Diego", "Sacramento"],
+    "Texas": ["Houston", "Dallas", "Austin", "San Antonio"],
+    "Illinois": ["Chicago", "Naperville", "Aurora"]
+  }
+}
+

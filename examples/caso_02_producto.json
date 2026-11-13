@@ -1,0 +1,16 @@
+{
+  "marca": {"nombre": "Café Tomebamba", "producto": "Café de especialidad tostado en Cuenca", "sitio_web": null},
+  "ubicacion": {"pais": "Ecuador", "provincia": "Azuay", "ciudad": "Cuenca"},
+  "segmento": {"edad_min": 22, "edad_max": 35, "sexo": "ambos", "nse": "B", "nse_escala_pais": "EC"},
+  "objetivo": ["ventas"],
+  "forma": {
+    "participantes": [{"nombre": "Mateo", "protagonico": true}],
+    "tipo": "publicitario",
+    "especificaciones": "Tostamos aquí, no importamos",
+    "indicaciones": "Nada de humo en cámara. Producto visible desde el primer segundo.",
+    "tono": "marcado",
+    "duracion_objetivo_s": 15
+  },
+  "competencia": {"modo": "ambas"}
+}
+

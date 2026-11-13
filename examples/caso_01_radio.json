@@ -1,0 +1,19 @@
+{
+  "marca": {"nombre": "La Suprema 96.1", "producto": "Programa radial matutino", "sitio_web": "la961.com"},
+  "ubicacion": {"pais": "Ecuador", "provincia": "Azuay", "ciudad": "Cuenca"},
+  "segmento": {"edad_min": 25, "edad_max": 40, "sexo": "ambos", "nse": "C+", "nse_escala_pais": "EC"},
+  "objetivo": ["views"],
+  "forma": {
+    "participantes": [
+      {"nombre": "Ana", "protagonico": true},
+      {"nombre": "Diego", "protagonico": false}
+    ],
+    "tipo": "sketch",
+    "especificaciones": "La Suprema, donde vos sos",
+    "indicaciones": "Tono cercano, sin doble sentido. Musica andina suave.",
+    "tono": "moderado",
+    "duracion_objetivo_s": 30
+  },
+  "competencia": {"modo": "ambas"}
+}
+

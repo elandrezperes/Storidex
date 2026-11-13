@@ -1,0 +1,172 @@
+{
+  "_meta": {
+    "descripcion": "Registro lingüístico por país y ciudad. Determina el tratamiento, el léxico propio y las palabras de otras variedades que romperían la verosimilitud.",
+    "ejes": {
+      "tratamiento": "voseo | tuteo | ustedeo | mixto",
+      "marcadores": "palabras y giros propios de la variedad",
+      "evitar": "voces de otras variedades que delatan que el guion no es local",
+      "ejemplo": "una frase corta en el registro real, para calibrar el modelo"
+    }
+  },
+
+  "Ecuador": {
+    "Azuay": {
+      "registro": "español serrano del austro (cuencano)",
+      "tratamiento": "mixto",
+      "marcadores": ["vos", "ñe", "de ley", "chuta", "huevadas", "pana", "así no más", "véngase", "deme", "calientito", "a la orden"],
+      "evitar": ["che", "boludo", "laburo", "parce", "bacano", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros"],
+      "ejemplo": "Vos venís a esta hora y no hay ni un pan calientito, ñe."
+    },
+    "Pichincha": {
+      "registro": "español serrano (quiteño)",
+      "tratamiento": "ustedeo",
+      "marcadores": ["su merced", "ñe", "de ley", "chuta", "pana", "vea", "véngase", "así no más", "bastante"],
+      "evitar": ["che", "boludo", "laburo", "parce", "bacano", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros"],
+      "ejemplo": "Vea, señorita, deme un pan de los de ayer no más."
+    },
+    "Guayas": {
+      "registro": "español costeño (guayaquileño)",
+      "tratamiento": "tuteo",
+      "marcadores": ["pana", "ñaño", "bacán", "de una", "qué bestia", "man", "cuñado", "full", "chiro"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "ñe"],
+      "ejemplo": "De una, pana, eso se resuelve en la esquina."
+    },
+    "Manabí": {
+      "registro": "español costeño manabita",
+      "tratamiento": "tuteo",
+      "marcadores": ["pana", "ñaño", "de una", "ve", "qué bestia", "bacán"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "güey", "vale", "tío", "vosotros", "ñe"],
+      "ejemplo": "Ve, pana, esto está bueno de verdad."
+    },
+    "_default": {
+      "registro": "español ecuatoriano",
+      "tratamiento": "mixto",
+      "marcadores": ["ñe", "de ley", "chuta", "pana", "así no más", "bastante"],
+      "evitar": ["che", "boludo", "laburo", "parce", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros"],
+      "ejemplo": "Chuta, eso no me lo esperaba."
+    }
+  },
+
+  "Argentina": {
+    "Buenos Aires": {
+      "registro": "español rioplatense (porteño)",
+      "tratamiento": "voseo",
+      "marcadores": ["vos", "tenés", "sabés", "che", "laburo", "quilombo", "copado", "re", "posta", "boliche", "fiaca", "guita", "morfi", "dale"],
+      "evitar": ["chévere", "parce", "bacano", "pana", "po", "cachai", "güey", "chido", "tío", "vale", "vosotros", "ustedes" ],
+      "ejemplo": "Che, tengo una fiaca bárbara, pero dale que vamos."
+    },
+    "Córdoba": {
+      "registro": "español cordobés",
+      "tratamiento": "voseo",
+      "marcadores": ["vos", "che", "laburo", "copado", "largá", "pibe", "culo", "re"],
+      "evitar": ["chévere", "parce", "bacano", "pana", "po", "cachai", "güey", "chido", "tío", "vale", "vosotros"],
+      "ejemplo": "Largá el laburo y venite, che."
+    },
+    "_default": {
+      "registro": "español rioplatense",
+      "tratamiento": "voseo",
+      "marcadores": ["vos", "tenés", "che", "laburo", "copado", "re", "dale", "posta"],
+      "evitar": ["chévere", "parce", "bacano", "pana", "po", "cachai", "güey", "chido", "tío", "vale", "vosotros"],
+      "ejemplo": "Dale, che, que se hace tarde."
+    }
+  },
+
+  "Colombia": {
+    "Antioquia": {
+      "registro": "español paisa (antioqueño)",
+      "tratamiento": "tuteo",
+      "marcadores": ["parce", "pues", "a la orden", "bacano", "chévere", "sumercé", "vea pues", "qué más", "listo", "oís"],
+      "evitar": ["che", "boludo", "laburo", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe"],
+      "ejemplo": "Qué más, parce, a la orden, eso queda listo hoy mismo."
+    },
+    "Cundinamarca": {
+      "registro": "español bogotano",
+      "tratamiento": "ustedeo",
+      "marcadores": ["sumercé", "¿sí o no?", "vea pues", "chévere", "bacano", "de una", "listo"],
+      "evitar": ["che", "boludo", "laburo", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe"],
+      "ejemplo": "Vea pues, sumercé, eso se lo dejo listo."
+    },
+    "Valle del Cauca": {
+      "registro": "español caleño",
+      "tratamiento": "tuteo",
+      "marcadores": ["ve", "oís", "parce", "chévere", "de una", "listo", "qué más"],
+      "evitar": ["che", "boludo", "laburo", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe"],
+      "ejemplo": "Oís, ve, eso está listo de una."
+    },
+    "_default": {
+      "registro": "español colombiano",
+      "tratamiento": "tuteo",
+      "marcadores": ["parce", "chévere", "de una", "listo", "vea pues"],
+      "evitar": ["che", "boludo", "laburo", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe"],
+      "ejemplo": "De una, parce, eso queda listo."
+    }
+  },
+
+  "Chile": {
+    "_default": {
+      "registro": "español chileno",
+      "tratamiento": "tuteo",
+      "marcadores": ["cachai", "po", "fome", "bacán", "harto", "al tiro", "weá", "filo"],
+      "evitar": ["che", "boludo", "parce", "bacano", "chido", "güey", "vale", "tío", "vosotros", "pana", "ñe"],
+      "ejemplo": "Al tiro, po, eso queda listo altiro."
+    }
+  },
+
+  "Perú": {
+    "Lima": {
+      "registro": "español limeño",
+      "tratamiento": "tuteo",
+      "marcadores": ["chamba", "pata", "jato", "chévere", "oye", "asuu", "causa", "habla"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe"],
+      "ejemplo": "Oye, causa, esa chamba queda lista hoy."
+    },
+    "_default": {
+      "registro": "español peruano",
+      "tratamiento": "tuteo",
+      "marcadores": ["chamba", "pata", "chévere", "oye", "causa"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe"],
+      "ejemplo": "Oye, eso está chévere."
+    }
+  },
+
+  "México": {
+    "_default": {
+      "registro": "español mexicano",
+      "tratamiento": "tuteo",
+      "marcadores": ["órale", "chido", "padre", "no manches", "a poco", "güey", "ahorita", "esquina", "compa"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "vos", "vosotros", "vale", "tío", "pana", "ñe", "bacano"],
+      "ejemplo": "Órale, compa, eso queda ahorita."
+    }
+  },
+
+  "España": {
+    "_default": {
+      "registro": "español peninsular",
+      "tratamiento": "tuteo",
+      "marcadores": ["tío", "vale", "majo", "qué guay", "vosotros", "curro", "flipar", "echar un cable"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "güey", "chido", "pana", "ñe", "bacano", "plata", "carro", "computadora"],
+      "ejemplo": "Vale, tío, eso te lo apaño yo."
+    }
+  },
+
+  "Estados Unidos": {
+    "_default": {
+      "registro": "español neutro de Estados Unidos",
+      "tratamiento": "tuteo",
+      "marcadores": ["tú", "ustedes", "carro", "celular", "plata", "acá", "ahorita"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe", "bacano", "vos"],
+      "ejemplo": "Mira, acá lo tienes listo ahorita."
+    }
+  },
+
+  "Neutro": {
+    "_default": {
+      "registro": "español neutro",
+      "tratamiento": "tuteo",
+      "marcadores": ["tú", "usted", "ustedes"],
+      "evitar": ["che", "boludo", "parce", "po", "cachai", "güey", "chido", "vale", "tío", "vosotros", "pana", "ñe", "bacano", "vos", "laburo", "chamba", "sumercé"],
+      "ejemplo": "Puedes empezar hoy mismo."
+    }
+  }
+}
+

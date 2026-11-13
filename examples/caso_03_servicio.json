@@ -1,0 +1,19 @@
+{
+  "marca": {"nombre": "Estudio Contable Vintimilla", "producto": "Contabilidad para pequeños negocios", "sitio_web": null},
+  "ubicacion": {"pais": "Ecuador", "provincia": "Azuay", "ciudad": "Cuenca"},
+  "segmento": {"edad_min": 30, "edad_max": 55, "sexo": "ambos", "nse": "C+", "nse_escala_pais": "EC"},
+  "objetivo": ["cta", "ventas"],
+  "forma": {
+    "participantes": [
+      {"nombre": "Verónica", "protagonico": true},
+      {"nombre": "Cliente", "protagonico": false}
+    ],
+    "tipo": "sketch",
+    "especificaciones": "Las cuentas claras también son un descanso",
+    "indicaciones": "Sin tecnicismos. La objeción es el miedo a la multa.",
+    "tono": "neutro",
+    "duracion_objetivo_s": 45
+  },
+  "competencia": {"modo": "marca"}
+}
+
