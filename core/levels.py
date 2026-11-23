@@ -36,7 +36,17 @@ def es_verificado(nivel: str) -> bool:
 
 
 def confianza(persona: dict) -> dict:
-    """Proporción de bloques de la ficha sostenidos en fuente."""
+    """Cobertura documental de las afirmaciones de la ficha."""
+    if "afirmaciones" in persona:
+        claims = persona["afirmaciones"].values()
+        total = len(claims)
+        covered = sum(bool(claim["respaldo"]) for claim in claims)
+        return {
+            "score": round(covered / total, 2) if total else 0,
+            "campos_con_fuente": covered,
+            "campos_totales": total,
+            "nivel_global": peor(claim["nivel"] for claim in claims),
+        }
     bloques = ["perfil", "consumo", "conflicto", "lenguaje", "anti_persona"]
     niveles = [persona.get(b, {}).get("nivel", T4) for b in bloques]
     con_fuente = sum(1 for n in niveles if es_verificado(n))
@@ -51,11 +61,5 @@ def confianza(persona: dict) -> dict:
 def resumen(persona: dict) -> str:
     """Frase corta para mostrar en la interfaz."""
     c = confianza(persona)
-    if c["score"] == 0:
-        return "Ficha enteramente inferida: sin fuentes, el guion se marcará como inferido."
-    if c["score"] < 0.4:
-        return f"Ficha débil ({int(c['score']*100)}% sostenida en fuentes). Añade capturas o entrevistas."
-    if c["score"] < 0.8:
-        return f"Ficha parcialmente sostenida ({int(c['score']*100)}%)."
-    return f"Ficha sólida ({int(c['score']*100)}% sostenida en fuentes)."
-
+    return (f"Cobertura documental: {c['campos_con_fuente']} de {c['campos_totales']} campos. "
+            "La procedencia no acredita veracidad.")

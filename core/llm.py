@@ -12,10 +12,17 @@ Variables de entorno (.env):
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
+from hashlib import sha256
 import json
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 import os
 import re
 import time
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 from dotenv import load_dotenv
 
@@ -39,7 +46,6 @@ def _cfg(nombre: str, defecto: str = "") -> str:
     except Exception:  # noqa: BLE001
         pass
     return defecto
-
 
 # ------------------------------------------------------------------ ajustes
 DRY = _cfg("STORIDEX_DRY_RUN", "false").lower() in ("1", "true", "yes")
@@ -72,13 +78,56 @@ class CosteExcedido(RuntimeError):
     """La llamada superaría el techo de gasto por generación."""
 
 
+_RUN = ContextVar("storidex_run", default=None)
+
+
+@contextmanager
+def auditar(ruta):
+    token = _RUN.set(Path(ruta) if ruta else None)
+    try:
+        yield
+    finally:
+        _RUN.reset(token)
+
+
+def _guardar_json(path, data):
+    with NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as f:
+        temp = Path(f.name)
+        try:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.close()
+            temp.replace(path)
+        finally:
+            temp.unlink(missing_ok=True)
+
+
+def _trazar(respuesta, prompt, *, cache=False, busquedas=None):
+    run = _RUN.get()
+    if run is not None:
+        path = run / "trace.json"
+        trace = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"llamadas": []}
+        entrada, salida = (0, 0) if cache else (respuesta.entrada, respuesta.salida)
+        trace["llamadas"].append({
+            "modelo": respuesta.modelo, "prompt": getattr(prompt, "version", None),
+            "tokens": {"entrada": entrada, "salida": salida},
+            "costo_estimado": 0 if cache else respuesta.coste,
+            "desde_cache": cache, "consultas_grounding": busquedas,
+        })
+        trace["tokens"] = {kind: sum(call["tokens"][kind] for call in trace["llamadas"])
+                           for kind in ("entrada", "salida")}
+        trace["costo_estimado"] = round(sum(call["costo_estimado"] for call in trace["llamadas"]), 8)
+        trace["alcance_costo"] = "Estimación por tokens reportados; excluye infraestructura y cargos de búsqueda."
+        _guardar_json(path, trace)
+    return respuesta
+
+
 # ------------------------------------------------------------------ estado
 def hay_llave() -> bool:
-    return bool(_cfg("OPENAI_API_KEY"))
+    return bool((_cfg("OPENAI_API_KEY") or "").strip())
 
 
 def hay_gemini() -> bool:
-    return bool(_cfg("GEMINI_API_KEY"))
+    return bool((_cfg("GEMINI_API_KEY") or "").strip())
 
 
 def motivo_sin_llave() -> str:
@@ -160,7 +209,7 @@ def pedir_json(prompt_sistema: str, prompt_usuario: str, *,
     if DRY:
         if seco is None:
             raise ValueError("En modo de prueba hay que pasar `seco`.")
-        return Respuesta(json.dumps(seco, ensure_ascii=False, indent=2), "prueba")
+        return _trazar(Respuesta(json.dumps(seco, ensure_ascii=False, indent=2), "prueba"), prompt_sistema)
 
     if not hay_llave():
         raise SinLlave(motivo_sin_llave())
@@ -173,11 +222,13 @@ def pedir_json(prompt_sistema: str, prompt_usuario: str, *,
             ent = r.usage.prompt_tokens if r.usage else 0
             sal = r.usage.completion_tokens if r.usage else 0
             coste = _coste(nombre, ent, sal)
+            response = _trazar(Respuesta(_json_limpio(texto), nombre, ent, sal, coste=coste),
+                               prompt_sistema)
             if coste > MAX_COST:
                 raise CosteExcedido(
                     f"Esta generación costaría {coste:.2f} USD, por encima del techo "
                     f"de {MAX_COST:.2f} USD. Revisa STORIDEX_MAX_COST_USD.")
-            return Respuesta(_json_limpio(texto), nombre, ent, sal, coste=coste)
+            return response
         except (SinLlave, CosteExcedido):
             raise
         except Exception as e:  # noqa: BLE001
@@ -207,6 +258,22 @@ def investigar(prompt_sistema: str, prompt_usuario: str, *,
             "sin_busqueda": True,
         }, ensure_ascii=False), "sin-busqueda")
 
+    run = _RUN.get()
+    cache_path = None
+    if run is not None:
+        folder = run.parent / ".research-cache"
+        folder.mkdir(exist_ok=True)
+        digest = sha256(json.dumps([MODEL_RESEARCH, prompt_sistema, prompt_usuario],
+                                   ensure_ascii=False).encode()).hexdigest()
+        cache_path = folder / f"{digest}.json"
+        try:
+            if time.time() - cache_path.stat().st_mtime < 86400:
+                cached = json.loads(cache_path.read_text(encoding="utf-8"))
+                response = Respuesta(cached["texto"], MODEL_RESEARCH, fuentes=cached["fuentes"])
+                return _trazar(response, prompt_sistema, cache=True, busquedas=0)
+        except (FileNotFoundError, ValueError, KeyError):
+            pass
+
     from google import genai
     from google.genai import types
 
@@ -221,9 +288,11 @@ def investigar(prompt_sistema: str, prompt_usuario: str, *,
         ),
     )
     fuentes: list[str] = []
+    busquedas = 0
     try:
         for cand in r.candidates or []:
             gm = getattr(cand, "grounding_metadata", None)
+            busquedas += len(getattr(gm, "web_search_queries", None) or [])
             for chunk in (getattr(gm, "grounding_chunks", None) or []):
                 web = getattr(chunk, "web", None)
                 if web and getattr(web, "uri", None):
@@ -233,8 +302,17 @@ def investigar(prompt_sistema: str, prompt_usuario: str, *,
 
     ent = getattr(getattr(r, "usage_metadata", None), "prompt_token_count", 0) or 0
     sal = getattr(getattr(r, "usage_metadata", None), "candidates_token_count", 0) or 0
-    return Respuesta(_json_limpio(r.text or "{}"), MODEL_RESEARCH, ent, sal, fuentes,
-                     _coste(MODEL_RESEARCH, ent, sal))
+    response = _trazar(Respuesta(_json_limpio(r.text or "{}"), MODEL_RESEARCH, ent, sal, fuentes,
+                                 _coste(MODEL_RESEARCH, ent, sal)),
+                       prompt_sistema, busquedas=busquedas)
+    if cache_path is not None and fuentes:
+        try:
+            valid = isinstance(response.dict(), dict)
+        except ValueError:
+            valid = False
+        if valid:
+            _guardar_json(cache_path, {"texto": response.texto, "fuentes": fuentes})
+    return response
 
 
 class RespuestaInvalida(RuntimeError):
@@ -256,10 +334,101 @@ def parsear(r: Respuesta, que: str = "la respuesta") -> dict:
     return datos
 
 
+class Prompt(str):
+    """Texto del prompt con su versión para auditoría."""
+
+    def __new__(cls, texto, version):
+        value = super().__new__(cls, texto)
+        value.version = version
+        return value
+
+
 def cargar_prompt(nombre: str) -> str:
     ruta = os.path.join(os.path.dirname(__file__), "prompts", nombre)
     with open(ruta, encoding="utf-8") as f:
-        return f.read()
+        return Prompt(f.read(), nombre)
 
+
+class ServicioNoDisponible(RuntimeError):
+    """Error seguro para la interfaz, sin URL, cuerpo remoto ni credenciales."""
+
+
+class _SinRedireccion(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def servicio_json(provider, url, *, body=None, headers=None, method=None, retry=False):
+    """Transporte externo centralizado. Solo destinos fijos seleccionados por el servidor."""
+    from urllib.parse import urlsplit
+
+    allowed = {"firecrawl": "api.firecrawl.dev", "vidiq": "mcp.vidiq.com",
+               "elevenlabs": "api.elevenlabs.io", "canva": "api.canva.com"}
+    parsed = urlsplit(url)
+    if (parsed.scheme != "https" or parsed.hostname != allowed.get(provider)
+            or parsed.username or parsed.password or parsed.port not in (None, 443)):
+        raise ServicioNoDisponible("El destino del servicio no está autorizado.")
+    payload = body if isinstance(body, bytes) else (
+        json.dumps(body).encode() if body is not None else None
+    )
+    request = Request(url, data=payload, method=method,
+                      headers={"Content-Type": "application/json", **(headers or {})})
+    for attempt in range(2 if retry else 1):
+        try:
+            with build_opener(_SinRedireccion()).open(request, timeout=18) as response:
+                if "text/event-stream" in response.headers.get("Content-Type", ""):
+                    total, lines, data = 0, [], {}
+                    while True:
+                        line = response.readline(5_000_001 - total)
+                        total += len(line)
+                        if total > 5_000_000:
+                            raise ServicioNoDisponible("La respuesta del servicio supera el límite.")
+                        if line in (b"\n", b"\r\n", b""):
+                            if lines:
+                                item = json.loads("\n".join(lines))
+                                if item.get("id") == (body or {}).get("id") and (
+                                        "result" in item or "error" in item):
+                                    data = item
+                                    break
+                                lines = []
+                            if not line:
+                                break
+                        elif line.startswith(b"data:"):
+                            lines.append(line[5:].decode("utf-8").strip())
+                else:
+                    raw = response.read(5_000_001)
+                    if len(raw) > 5_000_000:
+                        raise ServicioNoDisponible("La respuesta del servicio supera el límite.")
+                    text = raw.decode("utf-8")
+                    data = json.loads(text) if text else {}
+                return data, dict(response.headers)
+        except (HTTPError, URLError, TimeoutError, ValueError, OSError) as exc:
+            code = getattr(exc, "code", None)
+            if attempt == 0 and retry and (code is None or code == 429 or code >= 500):
+                time.sleep(1)
+                continue
+            raise ServicioNoDisponible("El servicio externo no está disponible. Inténtalo más tarde.") from None
+
+
+def registrar_servicio(provider, status, *, units=0, cache=False):
+    run = _RUN.get()
+    if run is None:
+        return
+    path = run / "trace.json"
+    trace = json.loads(path.read_text()) if path.exists() else {"llamadas": []}
+    trace.setdefault("services", []).append({"provider": provider, "status": status,
+        "units": units, "cached": cache, "cost_usd": None,
+        "cost_note": "Cargo externo no incluido en la estimación por tokens."})
+    _guardar_json(path, trace)
+
+
+def error_servicio(provider):
+    run = _RUN.get()
+    if run is not None:
+        path = run / "errors.json"
+        errors = json.loads(path.read_text()) if path.exists() else []
+        errors.append({"fase": "services", "provider": provider,
+                       "tipo": "Servicio externo no disponible"})
+        _guardar_json(path, errors)
 
 

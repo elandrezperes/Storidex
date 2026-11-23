@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 
-from .. import contracts, llm
+from .. import contracts, evidence, llm, referencias
 from ..levels import T4, peor
 
 CLAVES_LISTA = ("premisas", "premises", "opciones", "options", "alternativas",
@@ -54,7 +54,7 @@ def _normalizar(lista: list[dict]) -> list[dict]:
         "proposicion": ("proposicion", "premise", "proposition", "idea", "resumen"),
     }
     for i, p in enumerate(lista[:3]):
-        limpio = {"id": p.get("id") or "ABC"[i]}
+        limpio = {"id": "ABC"[i]}
         for campo, alias in equivalencias.items():
             valor = p.get(campo)
             if not valor:
@@ -63,6 +63,11 @@ def _normalizar(lista: list[dict]) -> list[dict]:
                         valor = p[a]
                         break
             limpio[campo] = str(valor or "").strip()
+        for field in ("recurso_visual", "razon_estrategica"):
+            value = p.get(field)
+            limpio[field] = value.strip() if isinstance(value, str) else ""
+        limpio["afirmaciones"] = p.get("afirmaciones")
+        limpio["referencias_creativas"] = p.get("referencias_creativas")
         limpio["usa_oportunidad"] = bool(p.get("usa_oportunidad", False))
         limpio["nivel"] = p.get("nivel", T4)
         salida.append(limpio)
@@ -75,13 +80,24 @@ def _completas(lista: list[dict]) -> bool:
         for p in lista)
 
 
+def _alternativas_validas(lista):
+    return _completas(lista) and all(
+        len({p[field].casefold() for p in lista if p[field]}) == 3
+        for field in ("conflicto", "recurso_visual", "desenlace")
+    ) and all(p["razon_estrategica"] for p in lista)
+
+
 def ejecutar(brief: dict, ficha: dict, research: dict, persona_txt: str) -> dict:
     from .. import local
 
+    dossier = (
+        research.get("dossier_referencias") or brief.get("dossier_referencias")
+        or referencias.congelar(brief)
+    )
     if llm.DRY:
         datos = local.premisas(brief, ficha)
     else:
-        sistema = llm.cargar_prompt("v1_premisas.md")
+        sistema = llm.cargar_prompt("v3_premisas.md")
         usuario = (
             persona_txt + "\n"
             f"OBJETIVO DEL VIDEO: {', '.join(brief['objetivo'])}\n"
@@ -90,15 +106,10 @@ def ejecutar(brief: dict, ficha: dict, research: dict, persona_txt: str) -> dict
             f"FRASE OBLIGATORIA: {brief['forma'].get('especificaciones') or '(ninguna)'}\n"
             f"PRODUCTO: {brief['marca']['nombre']} — {brief['marca']['producto']}\n\n"
             f"OPORTUNIDAD DETECTADA: {research.get('oportunidad', {}).get('texto') or '(sin datos)'}\n\n"
-            "Devuelve EXACTAMENTE este objeto, con la clave «premisas» y tres elementos:\n"
-            '{"premisas":[{"id":"A","caracter":"","conflicto":"","desenlace":"",'
-            '"proposicion":"","usa_oportunidad":false},'
-            '{"id":"B","caracter":"","conflicto":"","desenlace":"","proposicion":"",'
-            '"usa_oportunidad":true},'
-            '{"id":"C","caracter":"","conflicto":"","desenlace":"","proposicion":"",'
-            '"usa_oportunidad":false}]}'
+            f"RECURSOS DISPONIBLES: {brief['forma'].get('recursos') or '(sin declarar)'}"
         )
 
+        usuario += "\n\n" + json.dumps(referencias.contexto(dossier), ensure_ascii=False)
         r = llm.pedir_json(sistema, usuario, seco=local.premisas(brief, ficha) if llm.DRY else None,
                            temperatura=0.95)
         crudo = r.texto
@@ -109,12 +120,13 @@ def ejecutar(brief: dict, ficha: dict, research: dict, persona_txt: str) -> dict
         lista = _normalizar(lista)
 
         # segunda oportunidad: se le muestra su propia salida y se le pide corregir
-        if not _completas(lista):
+        if not _alternativas_validas(lista):
             usuario2 = (
                 usuario
                 + "\n\nTU RESPUESTA ANTERIOR NO SIRVIÓ. Devuelve solo el objeto JSON "
                   "con la clave «premisas» y exactamente tres elementos, cada uno con "
-                  "caracter, conflicto, desenlace y proposicion no vacíos.\n"
+                  "caracter, conflicto, desenlace, proposicion, recurso_visual y razon_estrategica. "
+                  "Diferencia conflicto, recurso visual y desenlace entre las tres opciones.\n"
                   "Respuesta anterior:\n" + crudo[:1500]
             )
             r2 = llm.pedir_json(sistema, usuario2, seco=None, temperatura=0.9)
@@ -123,7 +135,7 @@ def ejecutar(brief: dict, ficha: dict, research: dict, persona_txt: str) -> dict
             except Exception:  # noqa: BLE001
                 lista = []
 
-        if not _completas(lista):
+        if not _alternativas_validas(lista):
             raise PremisasInvalidas(
                 "El modelo no devolvió tres premisas utilizables después de dos intentos. "
                 "Puede ser un límite momentáneo del servicio: vuelve a pulsar el botón. "
@@ -132,7 +144,14 @@ def ejecutar(brief: dict, ficha: dict, research: dict, persona_txt: str) -> dict
 
         datos = {"premisas": lista}
 
+    sources = {item["id"]: item for collection in ("patrones", "referencias")
+               for item in dossier[collection]}
     for p in datos["premisas"]:
+        selected = evidence.valid_refs(p.get("referencias_creativas"), sources)
+        p["referencias_creativas"] = [sources[key] for key in selected[:3]]
+        p["afirmaciones"] = evidence.valid_refs(
+            p.get("afirmaciones"), ficha.get("afirmaciones", {})
+        )
         p["nivel"] = peor([p.get("nivel", T4), ficha["confianza"]["nivel_global"]])
 
     contracts.premisas(datos)

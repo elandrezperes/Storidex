@@ -1,0 +1,160 @@
+{
+  "version": 3,
+  "fuentes": {
+    "meta": {
+      "nombre": "Meta Ad Library",
+      "url": "https://business.facebook.com/ads/library",
+      "uso": "Anuncios activos de referentes o competidores",
+      "descripcion": "Permite ver cómo se anuncian otras marcas.",
+      "aplicacion": "Ayuda a reconocer mensajes repetidos y oportunidades para diferenciar tu negocio.",
+      "modo": "consulta"
+    },
+    "trends": {
+      "nombre": "Google Trends",
+      "url": "https://trends.google.com/explore?geo=EC&hl=es",
+      "uso": "Interés relativo de búsqueda por lugar y período",
+      "descripcion": "Muestra cómo cambia el interés por una búsqueda según el lugar y el período.",
+      "aplicacion": "Ayuda a elegir temas oportunos para tu público.",
+      "modo": "consulta"
+    },
+    "tiktok": {
+      "nombre": "TikTok Creative Center",
+      "url": "https://ads.tiktok.com/business/creativecenter/",
+      "uso": "Formatos, tendencias y anuncios seleccionados",
+      "descripcion": "Reúne tendencias, formatos y ejemplos de anuncios de TikTok.",
+      "aplicacion": "Aporta ideas de apertura, ritmo y acciones visuales.",
+      "modo": "consulta"
+    },
+    "dandad_film": {
+      "nombre": "D&AD Film",
+      "url": "https://www.dandad.org/work/d-ad-awards-archive?categories=film",
+      "uso": "Referencias de ejecución audiovisual",
+      "descripcion": "Es un archivo de campañas audiovisuales premiadas.",
+      "aplicacion": "Aporta ejemplos de cómo contar una idea mediante imágenes y acciones.",
+      "modo": "catalogo"
+    },
+    "dandad_writing": {
+      "nombre": "D&AD Writing for Advertising",
+      "url": "https://www.dandad.org/work/d-ad-awards-archive?categories=writing-for-advertising",
+      "uso": "Referencias de escritura publicitaria",
+      "descripcion": "Reúne ejemplos de escritura publicitaria reconocida.",
+      "aplicacion": "Ayuda a expresar una idea con claridad y pocas palabras.",
+      "modo": "catalogo"
+    },
+    "codes": {
+      "nombre": "TikTok Creative Codes",
+      "url": "https://ads.tiktok.com/business/en/creative-codes",
+      "uso": "Criterios de estructura y ritmo",
+      "descripcion": "Es una guía de TikTok para captar atención y organizar un video.",
+      "aplicacion": "Orienta la apertura, el desarrollo y el cierre del guion.",
+      "modo": "guia"
+    },
+    "abcd": {
+      "nombre": "Google ABCD",
+      "url": "https://support.google.com/google-ads/answer/14783551",
+      "uso": "Criterios de atención, marca, conexión y dirección",
+      "descripcion": "Es una guía de Google sobre atención, marca, conexión y acción.",
+      "aplicacion": "Ayuda a revisar si la marca, el mensaje y el siguiente paso se entienden.",
+      "modo": "guia"
+    },
+    "firecrawl": {
+      "nombre": "Firecrawl",
+      "url": "https://www.firecrawl.dev/",
+      "uso": "Referencias web recuperadas por el servidor",
+      "descripcion": "Consulta páginas sobre el producto y su mercado.",
+      "aplicacion": "Aporta referencias externas con enlace y fecha. No acredita por sí solo hábitos ni demanda.",
+      "modo": "consulta"
+    },
+    "youtube": {
+      "nombre": "YouTube · vidIQ",
+      "url": "https://www.youtube.com/",
+      "uso": "Videos públicos de referencia",
+      "descripcion": "Busca videos relacionados con el producto.",
+      "aplicacion": "Ayuda a estudiar temas y formatos sin copiar guiones ni asumir eficacia.",
+      "modo": "consulta"
+    }
+  },
+  "patrones": [
+    {
+      "id": "gancho_visual",
+      "fuente": "codes",
+      "tipo": "sketch",
+      "objetivos": [
+        "views",
+        "seguidores"
+      ],
+      "aplicacion": "Abrir con una acción que plantee una pregunta visual y responderla con el giro.",
+      "nivel": "T3"
+    },
+    {
+      "id": "producto_en_uso",
+      "fuente": "abcd",
+      "tipo": "publicitario",
+      "objetivos": [
+        "ventas",
+        "cta"
+      ],
+      "aplicacion": "Mostrar el producto en uso y hacer visible el beneficio concreto que se afirma.",
+      "nivel": "T3"
+    },
+    {
+      "id": "conexion_situacion",
+      "fuente": "abcd",
+      "tipo": "sketch",
+      "objetivos": [
+        "views",
+        "ventas"
+      ],
+      "aplicacion": "Hacer reconocible una situación de consumo mediante un detalle de acción o diálogo.",
+      "nivel": "T3"
+    },
+    {
+      "id": "cierre_accion",
+      "fuente": "codes",
+      "tipo": "publicitario",
+      "objetivos": [
+        "cta",
+        "ventas",
+        "seguidores"
+      ],
+      "aplicacion": "Cerrar con una acción acorde al objetivo que se pueda entender al ver u oír la pieza.",
+      "nivel": "T3"
+    },
+    {
+      "id": "marca_en_accion",
+      "fuente": "abcd",
+      "tipo": "publicitario",
+      "objetivos": [
+        "views"
+      ],
+      "aplicacion": "Integrar la marca en una acción o demostración relevante para el mensaje.",
+      "nivel": "T3"
+    },
+    {
+      "id": "ausencia_visible",
+      "fuente": "dandad_film",
+      "tipo": "sketch",
+      "objetivos": [
+        "views",
+        "ventas"
+      ],
+      "titulo": "The Wait",
+      "url": "https://www.dandad.org/work/d-ad-awards-archive/the-wait",
+      "aplicacion": "Convertir un elemento ausente en una espera visible para que su llegada resuelva la acción.",
+      "nivel": "T3"
+    },
+    {
+      "id": "imagen_completa_texto",
+      "fuente": "dandad_writing",
+      "tipo": "publicitario",
+      "objetivos": [
+        "views",
+        "seguidores"
+      ],
+      "titulo": "It Has to Be...",
+      "url": "https://www.dandad.org/work/d-ad-awards-archive/it-has-to-be",
+      "aplicacion": "Dejar que la imagen comunique el detalle que completa una línea breve de copy.",
+      "nivel": "T3"
+    }
+  ]
+}

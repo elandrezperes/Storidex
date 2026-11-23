@@ -10,7 +10,7 @@ import os
 import re
 from datetime import datetime
 
-from .. import contracts
+from .. import contracts, referencias
 from ..levels import T1
 
 
@@ -42,39 +42,32 @@ def restricciones(brief: dict) -> dict:
     }
 
 
-def ejecutar(brief: dict, raiz_runs: str = "runs") -> tuple[dict, str]:
+def ejecutar(brief: dict, raiz_runs: str = "runs", *,
+             identificador: str | None = None) -> tuple[dict, str]:
     """Valida, normaliza, asigna niveles T1 y persiste la ejecución."""
     contracts.brief(brief)
 
     b = json.loads(json.dumps(brief))  # copia profunda
     b.setdefault("idioma", {"locale": "es-EC", "variante": "cuencano"})
     b.setdefault("competencia", {"modo": "ambas"})
+
     b.setdefault("espacio", {"modo": "auto"})
-
-    # si el usuario fijó el espacio, se normaliza aquí y queda como restricción
     if b["espacio"].get("modo") == "fijo":
-        from .. import espacio as esp_mod
-        fijado = esp_mod.construir(
-            b["espacio"].get("tipo", "INT"),
-            b["espacio"].get("local", ""),
-            b["espacio"].get("momento", "DÍA"))
-        problemas = esp_mod.validar(fijado)
-        if problemas:
-            raise contracts.ContratoInvalido(
-                "Revisa el espacio escénico: " + " ".join(problemas))
-        b["espacio"] = {"modo": "fijo", **fijado}
+        from .. import espacio
+        b["espacio"] = {"modo": "fijo", **espacio.construir(
+            b["espacio"]["tipo"], b["espacio"]["local"], b["espacio"]["momento"])}
 
-    b["run_id"] = nuevo_run_id(b["marca"]["nombre"])
+    b["run_id"] = identificador or nuevo_run_id(b["marca"]["nombre"])
     b["niveles"] = {
         "marca": T1, "producto": T1, "ubicacion": T1,
         "segmento": T1, "objetivo": T1, "forma": T1,
     }
     b["restricciones"] = restricciones(b)
+    b["dossier_referencias"] = referencias.congelar(b)
 
     ruta = os.path.join(raiz_runs, b["run_id"])
     os.makedirs(ruta, exist_ok=True)
     with open(os.path.join(ruta, "brief.json"), "w", encoding="utf-8") as f:
         json.dump(b, f, ensure_ascii=False, indent=2)
     return b, ruta
-
 

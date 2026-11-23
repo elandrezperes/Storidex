@@ -63,8 +63,13 @@ Estas reglas existen porque el prototipo se valida académicamente. Romperlas in
 | Estado | `st.session_state` | Sin backend |
 | Tests | **pytest** | Una prueba por contrato de fase |
 
-**Prohibido:** añadir base de datos, autenticación, colas o frameworks web antes de que la
-tesis esté defendida. El alcance es el pipeline.
+**Prohibido:** añadir base de datos, autenticación propia, colas o frameworks web antes de
+que la tesis esté defendida. El alcance es el pipeline.
+
+La interfaz local sigue en Streamlit. En Sites, un Worker privado sirve la interfaz web
+y reenvía las acciones por HTTPS a un servicio WSGI de Python que reutiliza las fases,
+la persistencia JSON y los exportadores. El acceso de visitantes lo controla Sites.
+Las claves de los modelos se inyectan como secretos en el servicio Python.
 
 ### Estructura de carpetas
 
@@ -96,10 +101,10 @@ storidex/
 
 ---
 
-## 4. El flujo: cuatro pantallas, seis fases
+## 4. Vistas del flujo y siete etapas del modelo
 
-El usuario ve **cuatro pantallas**. El sistema ejecuta **seis fases**. No confundirlos:
-la pantalla 3 dispara tres fases.
+El usuario ve **cuatro pantallas**. El sistema ejecuta **siete etapas (P0–P6)**. No confundirlos:
+las vistas pueden agrupar etapas. En Sites hay seis vistas: Mis proyectos, Contexto, Forma, ficha de audiencia, premisas y guion. El progreso se muestra entre vistas.
 
 | Pantalla | Fase(s) | Qué ve el usuario |
 |---|---|---|
@@ -142,7 +147,6 @@ Valida lo que ya recogió la pantalla 2 y 3. No genera nada.
     "duracion_objetivo_s": 30
   },
   "competencia": {"modo": "ambas"},
-  "espacio":     { "modo": "fijo", "tipo": "INT", "local": "", "momento": "DÍA" },
   "idioma": {"locale": "es-EC", "variante": "cuencano"}
 }
 ```
@@ -177,6 +181,16 @@ Valida lo que ya recogió la pantalla 2 y 3. No genera nada.
 ```
 
 **Reglas de P1**
+- Los conectores del servidor (Firecrawl, Trends y vidIQ) aportan referencias separadas
+  del grounding. Su ausencia o fallo no bloquea. La autorización del chat no se copia al
+  servidor: cada proveedor necesita credenciales propias de despliegue. Canva y ElevenLabs
+  son ayudas opcionales posteriores a la entrega, activadas por el usuario y versionadas.
+  Los MCP de desarrollo (Desktop Commander, GitHub, Railway y Sites) conservan ese papel.
+- El dossier acepta referencias externas seleccionadas manualmente y exportaciones de Trends.
+  Se guardan aparte del grounding, con fecha, mercado, procedencia y alcance.
+  Los ejemplos creativos y el interés de búsqueda no prueban afirmaciones sobre el público.
+- Cada ejecución congela el dossier y hasta tres patrones de un catálogo JSON versionado.
+  P3 usa los patrones para idear y P6 aplica una rúbrica creativa orientativa sin bloquear la entrega.
 - Solo se usa Gemini **con grounding activo**. Cada URL de `fuentes` debe provenir del
   grounding, nunca del modelo.
 - Si `modo` incluye `marca` y no hay resultados: `de_marca: []` y `sin_datos: true`.
@@ -203,7 +217,7 @@ Valida lo que ya recogió la pantalla 2 y 3. No genera nada.
 1. **El segmento es restricción, no sugerencia.** Antes de sintetizar, se construye un
    bloque de restricciones duras desde P0 (rango de edad, ciudad, NSE, sexo). Si la salida
    las viola, se rechaza y se reintenta una vez.
-2. **Doce campos, `nivel` por bloque.** Una persona puede tener consumo verificado (T2) y
+2. **Doce campos evaluables, procedencia por campo y `nivel` por bloque.** El nombre sintético queda fuera del cálculo. Una persona puede tener consumo verificado (T2) y
    lenguaje inferido (T4). No se promedia a un solo nivel.
 3. **`lenguaje.diria` exige frases literales**, en primera persona, con el registro del
    segmento. Prohibido: adjetivos ("le gusta la música"), clichés publicitarios
@@ -213,7 +227,7 @@ Valida lo que ya recogió la pantalla 2 y 3. No genera nada.
 5. **`anti_persona` es obligatorio.** Declarar a quién NO se le habla.
 6. **Autocrítica (segunda llamada obligatoria)**. Revisa contra tres reglas: ¿contradice el
    segmento?, ¿hay estereotipo?, ¿alguna frase es genérica? Campos que fallan se reescriben.
-7. **`confianza.score` = campos con T1–T3 / 12.** Si `< 0,40`, no se bloquea: se advierte
+7. **`cobertura.score` = campos con respaldo documental / 12. `confianza.score` se conserva como alias de compatibilidad. La procedencia y la cobertura no acreditan veracidad.** Si `< 0,40`, no se bloquea: se advierte
    en pantalla («ficha débil, añade capturas o entrevistas») y se sigue.
 8. **La persona es editable por el usuario** antes de continuar. Se congela como
    `persona_v1.json`; si se edita, se guarda `persona_v2.json` y se registra el diff.
@@ -242,6 +256,7 @@ elección se registra como T1 y se añade a la ficha.
 
 **Reglas de P3**
 - Exactamente **tres**. Cada una con la tríada de Egri y una `proposicion` de una oración.
+- Diferenciar conflicto, recurso visual y desenlace. Guardar razón estratégica y referencias a las afirmaciones de la ficha.
 - Al menos una debe apoyarse explícitamente en `oportunidad` de P1.
 - Al menos una debe apoyarse en `anti_persona` de P2 (hablarle a quien no es, para
   contrastar).
@@ -312,11 +327,15 @@ El guion se representa como **lista de párrafos tipados**, no como texto:
 
 **Reglas de P6**
 - `duracion` reporta **dos estimaciones** y nunca una sola. Ver §8.
+- Registrar por separado el dictamen humano sobre afirmaciones y el resultado de una lectura cronometrada o animatic, cuando se realicen.
 - `frases_prohibidas` contrasta el guion contra `lenguaje.no_diria`. Si aparece una, falla.
+- `forma.mensaje_clave` expresa una intención comunicacional y se evalúa por su sentido con evidencia del guion.
 - `especificaciones_cumplidas` verifica literalmente `forma.especificaciones` (la frase
   obligatoria, si existe).
-- Si `ok: false` en cualquier bloque, se ofrece **una** regeneración de P5 con la corrección
-  explícita. Nunca bucle automático.
+- En Streamlit, se conserva la guarda de una corrección. En Sites, la entrega exige tres
+  revisiones internas como mínimo y permite hasta cinco. Después de una revisión fallida,
+  P5 recibe los hallazgos y el candidato anterior. Al agotar el límite se informa que no
+  se pudo preparar el guion y se conserva el diagnóstico en el servidor.
 
 ---
 
@@ -334,7 +353,7 @@ La distinción **no** es de género ni de tono publicitario: es **enunciativa**.
 - En P4, `cuarta_pared: directa` solo es válido si `tipo == publicitario`; en `sketch` es
   `indirecta`, salvo el último beat (tag), que se marca `indirecta_con_tag`.
 - El QA detecta la ruptura contando marcas `parenthetical` con `(a cámara)`, `(al público)`,
-  y vocativos en segunda persona dentro del diálogo.
+  y acciones que se dirigen explícitamente al lente. En sketch, el único aparte permitido debe corresponder al último beat autorizado.
 
 **Nota teórica para la tesis:** un sketch *puede* romper la cuarta pared en el remate sin
 dejar de ser sketch. La regla del prototipo es una decisión de diseño declarada, no una
@@ -405,7 +424,7 @@ luego `$14 / 1.000`.
 - Costo objetivo por generación completa: **≤ $0,10 USD**.
 - Modelo asignado por fase: **no cambiar Sol por Terra en P5** (es donde se juega la
   calidad del diálogo); **no usar Sol en P1–P4 ni P6**.
-- Máximo **3 regeneraciones** de P3 por sesión y **1** de P5 en P6.
+- Máximo **3 regeneraciones** de P3 por sesión. En Sites, el ciclo interno admite hasta **5 pasadas** de revisión. En Streamlit, se admite **1** corrección de P5 en P6.
 - Cachear P1 por `(marca, producto, ubicacion, competencia.modo)` durante 24 h: el research
   es lo único reutilizable entre iteraciones del mismo brief.
 - Registrar `tokens` y `costo_estimado` en cada `runs/<run_id>/trace.json`.
@@ -472,5 +491,14 @@ guion sin ver el proceso, y el investigador pueda auditarlo después.
 | 2026-11-12 | «Segmento socioeconómico» configurable por país | Evita asumir escala latinoamericana |
 | 2026-11-12 | Tono en tres niveles, por defecto «moderado» | Control sin abrir la puerta a la parodia |
 | 2026-11-12 | Duración como estimación doble, nunca medida | Honestidad metodológica |
-
+| 2026-11-13 | Interfaz web privada en Sites y servicio Python WSGI | Sites sirve Workers. El servicio Python conserva los contratos, el disco de auditoría y ambos formatos de exportación. |
+| 2026-11-13 | Entrega en Sites tras tres revisiones internas y un máximo de cinco | El flujo alojado sustituye la corrección manual. Solo entrega candidatos aprobados y conserva por separado las ediciones para el PDF. La investigación y la ficha se conservan en el servidor. |
+| 2026-11-18 | Trazabilidad por afirmación, alternativas audiovisuales y revisión humana | El dossier pide vincular evidencia, decisión, beat y fragmento, separar cobertura de veracidad y registrar por separado las comprobaciones automáticas y la lectura o animatic. |
+| 2026-11-18 | Dossier de fuentes y catálogo creativo versionado en JSON | Reutilizar referencias citables y auditables en P3 y P6 sin sumar servicios de pago ni cambiar la persistencia. |
+| 2026-11-18 | Referencias bajo MÁS DETALLES e investigación contextual en segundo plano | Flujo accesible para dueños de negocio. Las fuentes disponibles informan las fases y los detalles distinguen búsqueda actual, patrones de guía y aportes opcionales. |
+| 2026-11-18 | Adaptación web del diseño móvil aportado | Navegación lateral y columnas en escritorio, tarjetas crema y azul, lectura del guion y detalles desplegables. |
+| 2026-11-18 | Evaluar el mensaje clave por su sentido | La comprobación literal bloqueaba guiones válidos. Solo la frase obligatoria exige coincidencia textual. Los casos afectados pueden revisarse una vez conservando el historial anterior. |
+| 2026-11-19 | Evitar falsos rechazos por marca visual y acotaciones negativas | P6 considera la marca en acciones, distingue negaciones al detectar cámara y refleja el dictamen semántico en los resúmenes de tono y objetivo. |
+| 2026-11-19 | Adaptadores de servicios para el aplicativo | Investigación externa con caché y procedencia independiente, lectura sintética y exportación editable opcionales. Credenciales del servidor, sin reutilizar sesiones personales de Codex. |
 | 2026-11-23 | Pruebas automáticas en GitHub Actions | Cada cambio en main y pull request ejecuta pytest en Python 3.11, en modo seco y sin claves de proveedores. |
+| 2026-11-23 | Sincronización de las versiones local y GitHub | Se conservan espacio escénico, registro regional y compatibilidad con acceso y secretos de Streamlit, junto con trazabilidad, servicios opcionales y Actions. |

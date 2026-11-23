@@ -11,7 +11,7 @@ import json
 import os
 import sys
 
-from core import export_fdx, export_pdf
+from core import export_fdx, export_pdf, llm
 from core.phases import (p0_brief, p1_research, p2_persona, p3_premisas,
                          p4_escaleta, p5_guion, p6_qa)
 
@@ -21,20 +21,21 @@ def correr(ruta_brief: str) -> dict:
         b0 = json.load(f)
 
     brief, ruta = p0_brief.ejecutar(b0)
-    research = p1_research.ejecutar(brief)
-    ficha = p2_persona.ejecutar(brief, research)
-    persona_txt = p2_persona.inyectar(brief, ficha)
-    premisas = p3_premisas.ejecutar(brief, ficha, research, persona_txt)
+    with llm.auditar(ruta):
+        research = p1_research.ejecutar(brief)
+        ficha = p2_persona.ejecutar(brief, research)
+        persona_txt = p2_persona.inyectar(brief, ficha)
+        premisas = p3_premisas.ejecutar(brief, ficha, research, persona_txt)
 
-    premisa = premisas["premisas"][1]
-    escaleta = p4_escaleta.ejecutar(brief, premisa, persona_txt)
-    guion = p5_guion.ejecutar(brief, ficha, premisa, escaleta, persona_txt)
-    qa = p6_qa.ejecutar(brief, ficha, guion, escaleta)
+        premisa = premisas["premisas"][1]
+        escaleta = p4_escaleta.ejecutar(brief, premisa, persona_txt)
+        guion = p5_guion.ejecutar(brief, ficha, premisa, escaleta, persona_txt)
+        qa = p6_qa.revisar_brief(brief, ficha, guion, escaleta)
 
-    if qa["hallazgos"]:
-        guion = p5_guion.ejecutar(brief, ficha, premisa, escaleta, persona_txt,
-                                  correccion=p6_qa.correccion_para(guion, qa))
-        qa = p6_qa.ejecutar(brief, ficha, guion, escaleta)
+        if qa["hallazgos"]:
+            guion = p5_guion.ejecutar(brief, ficha, premisa, escaleta, persona_txt,
+                                      correccion=p6_qa.correccion_para(guion, qa))
+            qa = p6_qa.revisar_brief(brief, ficha, guion, escaleta)
 
     for nombre, datos in (("research.json", research), ("persona.json", ficha),
                           ("premisas.json", premisas), ("escaleta.json", escaleta),

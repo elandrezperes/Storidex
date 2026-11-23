@@ -1,0 +1,7 @@
+**
+!requirements.txt
+!sites_backend.py
+!core/
+!core/**
+**/__pycache__
+**/*.pyc
