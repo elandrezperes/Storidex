@@ -110,39 +110,18 @@ def ejecutar(brief: dict, ficha: dict, research: dict, persona_txt: str) -> dict
         )
 
         usuario += "\n\n" + json.dumps(referencias.contexto(dossier), ensure_ascii=False)
-        r = llm.pedir_json(sistema, usuario, seco=local.premisas(brief, ficha) if llm.DRY else None,
-                           temperatura=0.95)
-        crudo = r.texto
+        def validate(data):
+            contracts.premisas(data)
+            contracts._exigir({p["id"] for p in data["premisas"]} == {"A", "B", "C"},
+                              "Las premisas deben identificarse A, B y C.")
+            contracts._exigir(_alternativas_validas(data["premisas"]),
+                              "Diferencia conflicto, recurso visual y desenlace de las tres premisas.")
+            contracts._exigir(any(p["usa_oportunidad"] for p in data["premisas"]),
+                              "Una premisa debe usar la oportunidad, aunque sea inferida.")
         try:
-            lista = _extraer(json.loads(crudo))
-        except Exception:  # noqa: BLE001
-            lista = []
-        lista = _normalizar(lista)
-
-        # segunda oportunidad: se le muestra su propia salida y se le pide corregir
-        if not _alternativas_validas(lista):
-            usuario2 = (
-                usuario
-                + "\n\nTU RESPUESTA ANTERIOR NO SIRVIÓ. Devuelve solo el objeto JSON "
-                  "con la clave «premisas» y exactamente tres elementos, cada uno con "
-                  "caracter, conflicto, desenlace, proposicion, recurso_visual y razon_estrategica. "
-                  "Diferencia conflicto, recurso visual y desenlace entre las tres opciones.\n"
-                  "Respuesta anterior:\n" + crudo[:1500]
-            )
-            r2 = llm.pedir_json(sistema, usuario2, seco=None, temperatura=0.9)
-            try:
-                lista = _normalizar(_extraer(json.loads(r2.texto)))
-            except Exception:  # noqa: BLE001
-                lista = []
-
-        if not _alternativas_validas(lista):
-            raise PremisasInvalidas(
-                "El modelo no devolvió tres premisas utilizables después de dos intentos. "
-                "Puede ser un límite momentáneo del servicio: vuelve a pulsar el botón. "
-                "Si persiste, prueba con el tono «neutro» o una duración distinta."
-            )
-
-        datos = {"premisas": lista}
+            datos = llm.pedir_validado(sistema, usuario, validate, esquema="p3_premisas", seco=None, temperatura=0.9)
+        except (contracts.ContratoInvalido, llm.RespuestaInvalida) as exc:
+            raise PremisasInvalidas("No se recibieron tres premisas válidas después de dos intentos.") from exc
 
     sources = {item["id"]: item for collection in ("patrones", "referencias")
                for item in dossier[collection]}

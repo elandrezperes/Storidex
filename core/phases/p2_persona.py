@@ -48,11 +48,10 @@ def ejecutar(brief: dict, research: dict) -> dict:
     sources = brief.get("evidencia_publico", [])
     catalog = {f"E{i}": source for i, source in enumerate(sources, 1)}
     usuario += "\n\n" + json.dumps({"evidencia_publico": catalog}, ensure_ascii=False)
-    r = llm.pedir_json(llm.cargar_prompt("v2_persona.md"), usuario,
-                       seco=_seco(brief) if llm.DRY else None, temperatura=0.9)
-    ficha = _reparar(llm.parsear(r, "la ficha de persona"), brief)
+    ficha = llm.pedir_validado(llm.cargar_prompt("v2_persona.md"), usuario,
+        lambda data: contracts.persona(data, brief),
+        esquema="p2_persona", seco=_seco(brief) if llm.DRY else None, temperatura=0.9)
     ficha = _autocritica(ficha, brief)
-    ficha = _reparar(ficha, brief)          # segunda pasada, por si la corrección vino a medias
     contracts.persona(ficha, brief)
     evidence.annotate(ficha, sources)
     ficha["cobertura"] = confianza(ficha)
@@ -60,113 +59,20 @@ def ejecutar(brief: dict, research: dict) -> dict:
     return ficha
 
 
-def _reparar(ficha: dict, brief: dict) -> dict:
-    """Rellena huecos de la ficha SIN inventar contenido creativo.
-
-    Solo arregla lo estructural: claves ausentes, tipos equivocados y la edad
-    fuera de rango. Las frases y el conflicto son siempre del modelo; si faltan,
-    los pide la autocorrección, no este paso.
-    """
-    seg = brief["segmento"]
-    ficha = dict(ficha or {})
-
-    # ---- perfil: la edad se acota al segmento, no se rechaza
-    perfil = dict(ficha.get("perfil") or {})
-    try:
-        edad = int(perfil.get("edad"))
-    except (TypeError, ValueError):
-        edad = (seg["edad_min"] + seg["edad_max"]) // 2
-    perfil["edad"] = min(max(edad, seg["edad_min"]), seg["edad_max"])
-    for clave, defecto in (("nombre", ""), ("ocupacion", ""), ("barrio", ""), ("nivel", T4)):
-        if not perfil.get(clave):
-            perfil[clave] = defecto
-    ficha["perfil"] = perfil
-
-    # ---- bloques de texto
-    for bloque, claves in (
-        ("consumo", ("cuando", "donde", "dispositivo")),
-        ("conflicto", ("problema", "objecion", "detonante")),
-    ):
-        b = dict(ficha.get(bloque) or {})
-        for k in claves:
-            b.setdefault(k, "")
-        b.setdefault("nivel", T4)
-        ficha[bloque] = b
-
-    # ---- lenguaje: listas limpias
-    lang = dict(ficha.get("lenguaje") or {})
-    diria = [str(f).strip() for f in (lang.get("diria") or []) if str(f).strip()]
-    no_diria = [str(f).strip() for f in (lang.get("no_diria") or []) if str(f).strip()]
-    lang["diria"] = diria[:5]
-    lang["no_diria"] = no_diria[:5]
-    lang.setdefault("nivel", T4)
-    ficha["lenguaje"] = lang
-
-    # ---- anti-persona
-    anti = dict(ficha.get("anti_persona") or {})
-    anti.setdefault("quien_no_es", "")
-    anti.setdefault("nivel", T4)
-    ficha["anti_persona"] = anti
-
-    return ficha
-
-
 def _autocritica(ficha: dict, brief: dict) -> dict:
-    """Detecta estereotipo, contradicción y frase genérica, y corrige.
-
-    En modo real la corrección la hace el modelo: no se inyecta ninguna frase
-    escrita de antemano.
-    """
-    diria = ficha.get("lenguaje", {}).get("diria") or []
-    sospechosas = [f for f in diria if any(g in f.lower() for g in GENERICAS)]
-    faltan = len(diria) < 3
-
-    if not sospechosas and not faltan and ficha.get("anti_persona", {}).get("quien_no_es"):
-        return ficha
-
-    if llm.DRY:
-        return _autocritica_local(ficha)
-
-    usuario = (
-        "Esta ficha tiene un problema de calidad. Corrígela.\n\n"
-        f"FICHA ACTUAL\n{json.dumps(ficha, ensure_ascii=False, indent=2)}\n\n"
-        f"PRODUCTO: {brief['marca']['nombre']} — {brief['marca']['producto']}\n"
-        f"CIUDAD: {brief['ubicacion'].get('ciudad','')}\n"
-        f"SEGMENTO: {brief['segmento']['edad_min']}–{brief['segmento']['edad_max']} años\n\n"
-        "PROBLEMAS DETECTADOS\n"
-        + ("- Frases que un humano no diría en voz alta o que son genéricas de "
-           "publicidad: " + " / ".join(sospechosas) + "\n" if sospechosas else "")
-        + ("- Faltan frases en «diria» (deben ser tres).\n" if faltan else "")
-        + ("" if ficha.get("anti_persona", {}).get("quien_no_es") else
-           "- Falta la anti-persona.\n")
-        + "\nDevuelve la ficha COMPLETA corregida, con el mismo esquema. "
-          "Las frases de «diria» deben ser literales, en primera persona, con el "
-          "registro y el vocabulario de esa persona en esa ciudad. Sin adjetivos, "
-          "sin clichés publicitarios."
-    )
-    try:
-        r = llm.pedir_json(llm.cargar_prompt("v2_persona.md"), usuario,
-                           seco=ficha, temperatura=0.9)
-        corregida = llm.parsear(r, "la ficha corregida")
-        # se conserva la estructura original si el modelo omitió algún bloque
-        for bloque in ("perfil", "consumo", "conflicto", "lenguaje", "anti_persona"):
-            if bloque not in corregida:
-                corregida[bloque] = ficha[bloque]
-        original_refs = ficha.get("referencias")
-        if isinstance(original_refs, dict):
-            preserved = {}
-            for block, fields in evidence.FIELDS.items():
-                for field in fields:
-                    key = f"{block}.{field}"
-                    if (key in original_refs
-                            and corregida[block].get(field) == ficha[block].get(field)):
-                        preserved[key] = original_refs[key]
-            corregida["referencias"] = preserved
-        else:
-            corregida.pop("referencias", None)
-        return corregida
-    except Exception:  # noqa: BLE001
-        return ficha
+    """Segunda llamada obligatoria, validada; un fallo se registra y se comunica."""
+    usuario = json.dumps({"brief": brief, "ficha": ficha}, ensure_ascii=False)
+    corregida = llm.pedir_validado(llm.cargar_prompt("v1_autocritica_persona.md"), usuario,
+        lambda data: contracts.persona(data, brief), esquema="p2_persona", seco=ficha if llm.DRY else None,
+        temperatura=0.3)
+    original_refs = ficha.get("referencias", {})
+    corregida["referencias"] = {
+        f"{block}.{field}": original_refs[f"{block}.{field}"]
+        for block, fields in evidence.FIELDS.items() for field in fields
+        if f"{block}.{field}" in original_refs
+        and corregida[block][field] == ficha[block][field]
+    }
+    return corregida
 
 
 def _autocritica_local(ficha: dict) -> dict:

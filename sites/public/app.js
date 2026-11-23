@@ -188,6 +188,9 @@ function button(text, operation) {
 }
 
 function phraseCards(result, project) {
+  if (project.investigacion?.sin_busqueda) result.append(element("p",
+    "Búsqueda actual no disponible. La audiencia y las oportunidades se presentan como hipótesis; las referencias aportadas conservan su procedencia."));
+  audienceEditor(result, project);
   const choices = element("fieldset");
   choices.append(element("legend", "¿Qué frase se parece más a tu público?"));
   for (const [i, phrase] of project.frases.entries()) {
@@ -204,6 +207,58 @@ function phraseCards(result, project) {
       frase: choices.querySelector(":checked").value,
     })),
     button("Continuar sin elegir", () => advance(project, "premisas")));
+}
+
+function audienceEditor(result, project) {
+  const audience = project.audiencia;
+  if (!audience?.perfil) return;
+  const coverage = audience.cobertura?.score ?? 0;
+  result.append(element("p", coverage < 0.4
+    ? "Ficha débil: añade capturas o entrevistas cuando puedas. Puedes continuar con hipótesis visibles."
+    : "Revisa esta hipótesis de audiencia antes de elegir la historia."));
+  const details = element("details");
+  details.append(element("summary", "Revisar o corregir mi audiencia"));
+  details.append(element("p", "La propuesta ya está preparada. Corrige solo lo que no reconozcas en tu público. Tus cambios se registran como declaraciones, sin verificarlos como hechos."));
+  const fields = [
+    ["perfil.nombre", "Nombre ilustrativo"], ["perfil.edad", "Edad"],
+    ["perfil.ocupacion", "Ocupación"], ["perfil.barrio", "Zona o barrio"],
+    ["consumo.cuando", "Cuándo ve contenido"], ["consumo.donde", "Dónde lo ve"],
+    ["consumo.dispositivo", "Dispositivo"], ["conflicto.problema", "Qué problema encuentra"],
+    ["conflicto.objecion", "Qué le hace dudar"], ["conflicto.detonante", "Qué le anima a actuar"],
+    ["lenguaje.diria", "Frases que diría, una por línea"],
+    ["lenguaje.no_diria", "Frases que le sonarían falsas, una por línea"],
+    ["anti_persona.quien_no_es", "A quién no se dirige este guion"],
+  ];
+  const inputs = fields.map(([key, title]) => {
+    const [block, name] = key.split(".");
+    const original = audience[block][name];
+    const label = element("label", title);
+    const input = element(key === "perfil.edad" ? "select" : "textarea");
+    if (key === "perfil.edad") {
+      for (let age = project.segmento.edad_min; age <= project.segmento.edad_max; age++) {
+        input.add(new Option(String(age), String(age)));
+      }
+    } else {
+      input.maxLength = 4000;
+      input.rows = Array.isArray(original) ? 3 : 2;
+    }
+    input.value = Array.isArray(original) ? original.join("\n") : original;
+    label.append(input);
+    const claim = audience.afirmaciones?.[key];
+    if (claim) label.append(element("small", `${claim.nivel} · ${claim.origen === "inferencia_ia" ? "Hipótesis" : "Declaración o fuente"} · sin verificación de veracidad`));
+    details.append(label);
+    return {key, original, input};
+  });
+  details.append(button("Guardar audiencia", async () => {
+    const campos = {};
+    for (const {key, original, input} of inputs) {
+      const value = Array.isArray(original) ? input.value.split("\n").map(v => v.trim()).filter(Boolean)
+        : key === "perfil.edad" ? Number(input.value) : input.value.trim();
+      if (JSON.stringify(value) !== JSON.stringify(original)) campos[key] = value;
+    }
+    render(await request(`/${project.id}/audiencia`, {version: audience.version ?? 1, campos}));
+  }));
+  result.append(details);
 }
 
 function premises(result, project) {
@@ -285,6 +340,9 @@ function script(result, project) {
   });
   const link = element("a", "Descargar PDF");
   link.href = `${api}/${project.id}/pdf`;
+  const fdx = element("a", "Descargar Final Draft (.fdx)");
+  fdx.href = `${api}/${project.id}/fdx`;
+  fdx.className = "download-button";
   const save = button("Guardar cambios", async () => {
     const updated = await request(`/${project.id}/editar`, {
       version: project.version, textos: inputs.map(input => input.value),
@@ -294,11 +352,12 @@ function script(result, project) {
   });
   inputs.forEach(input => input.addEventListener("input", () => {
     link.hidden = inputs.some((item, i) => item.value !== project.guion[i].texto);
+    fdx.hidden = link.hidden;
   }));
   save.className = "secondary";
   editor.append(save);
   link.className = "download-button";
-  toolbar.append(link);
+  toolbar.append(link, fdx);
   const production = element("details");
   production.append(element("summary", "Escuchar o llevar a Canva"));
   production.append(element("p", "Opcional. Estas acciones usan los créditos del servicio configurado."));

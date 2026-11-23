@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "competencia": {
+      "type": "object",
+      "properties": {
+        "de_marca": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 0
+        },
+        "de_feed": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 0
+        },
+        "sin_datos": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "de_marca",
+        "de_feed",
+        "sin_datos"
+      ]
+    },
+    "mercado": {
+      "type": "object",
+      "properties": {
+        "tendencias": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "tendencias"
+      ]
+    },
+    "oportunidad": {
+      "type": "object",
+      "properties": {
+        "texto": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "nivel": {
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ]
+        }
+      },
+      "required": [
+        "texto",
+        "nivel"
+      ]
+    },
+    "fuentes_total": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "competencia",
+    "mercado",
+    "oportunidad",
+    "fuentes_total"
+  ]
+}

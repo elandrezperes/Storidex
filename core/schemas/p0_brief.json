@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "marca": {
+      "type": "object",
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "producto": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "nombre",
+        "producto"
+      ]
+    },
+    "ubicacion": {
+      "type": "object",
+      "properties": {
+        "pais": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "provincia": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "ciudad": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "pais",
+        "provincia",
+        "ciudad"
+      ]
+    },
+    "segmento": {
+      "type": "object",
+      "properties": {
+        "edad_min": {
+          "type": "integer"
+        },
+        "edad_max": {
+          "type": "integer"
+        },
+        "sexo": {
+          "enum": [
+            "ambos",
+            "f",
+            "m"
+          ]
+        }
+      },
+      "required": [
+        "edad_min",
+        "edad_max",
+        "sexo"
+      ]
+    },
+    "forma": {
+      "type": "object"
+    },
+    "objetivo": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "views",
+          "cta",
+          "ventas",
+          "seguidores"
+        ]
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "marca",
+    "ubicacion",
+    "segmento",
+    "forma",
+    "objetivo"
+  ]
+}

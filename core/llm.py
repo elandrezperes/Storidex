@@ -52,9 +52,10 @@ DRY = _cfg("STORIDEX_DRY_RUN", "false").lower() in ("1", "true", "yes")
 
 MODEL_WRITE = _cfg("STORIDEX_MODEL_WRITE", "gpt-4o")
 MODEL_MID = _cfg("STORIDEX_MODEL_MID", "gpt-4o-mini")
-MODEL_RESEARCH = _cfg("STORIDEX_MODEL_RESEARCH", "gemini-2.5-flash")
+MODEL_RESEARCH = _cfg("STORIDEX_MODEL_RESEARCH", "gemini-3.8-flash")
 
-MAX_COST = float(_cfg("STORIDEX_MAX_COST_USD", "0.30"))
+MAX_COST = float(_cfg("STORIDEX_MAX_COST_USD", "0.10"))
+OUTPUT_LIMIT = int(_cfg("STORIDEX_MAX_OUTPUT_TOKENS", "2400"))
 
 # Tarifas de referencia (USD por millón de tokens). Solo para estimar el gasto.
 PRECIOS = {
@@ -64,6 +65,7 @@ PRECIOS = {
     "gpt-4.1-mini": (0.40, 1.60),
     "gemini-2.5-flash": (0.30, 2.50),
     "gemini-2.5-pro": (1.25, 10.00),
+    "gemini-3.8-flash": (0.75, 3.75),
 }
 
 # Si el modelo configurado no existe en la cuenta, se prueba esta cadena.
@@ -117,6 +119,8 @@ def _trazar(respuesta, prompt, *, cache=False, busquedas=None):
                            for kind in ("entrada", "salida")}
         trace["costo_estimado"] = round(sum(call["costo_estimado"] for call in trace["llamadas"]), 8)
         trace["alcance_costo"] = "Estimación por tokens reportados; excluye infraestructura y cargos de búsqueda."
+        trace["limite_estimado_usd"] = MAX_COST
+        trace["max_output_tokens"] = OUTPUT_LIMIT
         _guardar_json(path, trace)
     return respuesta
 
@@ -127,7 +131,8 @@ def hay_llave() -> bool:
 
 
 def hay_gemini() -> bool:
-    return bool((_cfg("GEMINI_API_KEY") or "").strip())
+    enabled = _cfg("STORIDEX_RESEARCH_ENABLED", "true").lower() not in ("false", "0", "no")
+    return enabled and bool((_cfg("GEMINI_API_KEY") or "").strip())
 
 
 def motivo_sin_llave() -> str:
@@ -142,34 +147,82 @@ def _coste(modelo: str, entrada: int, salida: int) -> float:
     return (entrada / 1_000_000) * p_in + (salida / 1_000_000) * p_out
 
 
+def _presupuesto(modelo, sistema, usuario):
+    """Reserva conservadora por bytes de entrada y salida máxima, antes de gastar.
+
+    Es una guarda estimada por ejecución, no una factura ni un límite del proveedor.
+    No incluye búsquedas, infraestructura ni servicios opcionales.
+    """
+    run = _RUN.get()
+    if run is None:
+        raise CosteExcedido("La generación necesita un directorio de auditoría para controlar el gasto.")
+    if modelo not in PRECIOS:
+        raise CosteExcedido("Falta registrar una tarifa para el modelo configurado.")
+    path = run / "trace.json"
+    trace = json.loads(path.read_text()) if path.exists() else {}
+    spent = trace.get("costo_estimado", 0)
+    input_cost = _coste(modelo, len((sistema + usuario).encode("utf-8")) + 256, 0)
+    affordable = int((MAX_COST - spent - input_cost) * 1_000_000 / PRECIOS[modelo][1])
+    if affordable < 256:
+        raise CosteExcedido("La siguiente llamada supera el presupuesto estimado de esta ejecución.")
+    return min(OUTPUT_LIMIT, affordable)
+
+
 def _json_limpio(texto: str) -> str:
-    """Recorta vallas de markdown o texto alrededor del objeto JSON."""
-    t = (texto or "").strip()
-    t = re.sub(r"^```(?:json)?\s*", "", t)
-    t = re.sub(r"\s*```$", "", t)
-    i, j = t.find("{"), t.rfind("}")
-    if i != -1 and j > i:
-        return t[i:j + 1]
-    return t
+    """No rescata objetos de una respuesta en prosa ni elimina vallas."""
+    return (texto or "").strip()
+
+
+def registrar_error(fase, error):
+    run = _RUN.get()
+    if run is not None:
+        path = run / "errors.json"
+        errors = json.loads(path.read_text()) if path.exists() else []
+        errors.append({"fase": fase, "tipo": type(error).__name__,
+                       "detalle": str(error)[:500]})
+        _guardar_json(path, errors)
+
+
+def pedir_validado(sistema, usuario, validar, *, esquema=None, **kwargs):
+    """Un reintento de contrato; nunca convierte prosa en JSON."""
+    if esquema:
+        from .contracts import _schema
+        usuario += "\n" + json.dumps(_schema(esquema) if isinstance(esquema, str) else esquema,
+                                    ensure_ascii=False)
+    original = usuario
+    for intento in range(2):
+        try:
+            response = pedir_json(sistema, usuario, max_reintentos=0, **kwargs)
+            data = parsear(response)
+            validar(data)
+            return data
+        except (RespuestaInvalida, ValueError) as exc:
+            if intento:
+                registrar_error(getattr(sistema, "version", "contrato"), exc)
+                raise
+            correction = cargar_prompt("v1_corregir_contrato.md")
+            usuario = original + "\n" + str(correction) + "\n" + str(exc)
 
 
 def _cliente():
     from openai import OpenAI
-    return OpenAI(api_key=_cfg("OPENAI_API_KEY"))
+    return OpenAI(api_key=_cfg("OPENAI_API_KEY"), timeout=60, max_retries=0)
 
 
 def _pedir_openai(prompt_sistema: str, prompt_usuario: str, modelo: str,
                   temperatura: float):
     """Una llamada. Si el modelo no existe, prueba la cadena de respaldo."""
     cliente = _cliente()
-    intentos = [modelo] + [m for m in FALLBACK if m != modelo]
+    intentos = [modelo]  # La condición experimental conserva el modelo configurado.
 
     ultimo = None
     for nombre in intentos:
         try:
+            output_limit = _presupuesto(nombre, prompt_sistema, prompt_usuario)
             r = cliente.chat.completions.create(
                 model=nombre,
                 temperature=temperatura,
+                max_completion_tokens=output_limit,
                 response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": prompt_sistema},
                           {"role": "user", "content": prompt_usuario}],
@@ -224,16 +277,19 @@ def pedir_json(prompt_sistema: str, prompt_usuario: str, *,
             coste = _coste(nombre, ent, sal)
             response = _trazar(Respuesta(_json_limpio(texto), nombre, ent, sal, coste=coste),
                                prompt_sistema)
+            # Registrar también respuestas inválidas y su coste antes de reintentar.
+            parsear(response)
             if coste > MAX_COST:
                 raise CosteExcedido(
                     f"Esta generación costaría {coste:.2f} USD, por encima del techo "
                     f"de {MAX_COST:.2f} USD. Revisa STORIDEX_MAX_COST_USD.")
             return response
-        except (SinLlave, CosteExcedido):
+        except (SinLlave, CosteExcedido, RespuestaInvalida):
             raise
         except Exception as e:  # noqa: BLE001
             ultimo = e
             if intento < max_reintentos:
+                prompt_usuario += "\n" + str(cargar_prompt("v1_corregir_contrato.md"))
                 time.sleep(1.5 * (intento + 1))
     raise RuntimeError(f"El modelo no respondió tras varios intentos: {ultimo}")
 
@@ -278,6 +334,7 @@ def investigar(prompt_sistema: str, prompt_usuario: str, *,
     from google.genai import types
 
     cliente = genai.Client(api_key=_cfg("GEMINI_API_KEY"))
+    output_limit = _presupuesto(MODEL_RESEARCH, prompt_sistema, prompt_usuario)
     r = cliente.models.generate_content(
         model=MODEL_RESEARCH,
         contents=prompt_usuario,
@@ -285,6 +342,7 @@ def investigar(prompt_sistema: str, prompt_usuario: str, *,
             system_instruction=prompt_sistema,
             tools=[types.Tool(google_search=types.GoogleSearch())],
             response_mime_type="application/json",
+            max_output_tokens=output_limit,
         ),
     )
     fuentes: list[str] = []

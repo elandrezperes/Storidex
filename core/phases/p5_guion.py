@@ -77,7 +77,7 @@ def ejecutar(brief: dict, ficha: dict, premisa: dict, escaleta: dict,
     if llm.DRY:
         datos = local.guion(brief, ficha, premisa, escaleta)
     else:
-        sistema = llm.cargar_prompt("v5_guion.md")
+        sistema = llm.cargar_prompt("v6_guion.md")
         elenco = ", ".join(p["nombre"] for p in brief["forma"]["participantes"])
         prota = next(p["nombre"] for p in brief["forma"]["participantes"] if p["protagonico"])
         usuario = (
@@ -111,14 +111,19 @@ def ejecutar(brief: dict, ficha: dict, premisa: dict, escaleta: dict,
             usuario += f"\nCORRECCIÓN OBLIGATORIA DE ESTA VERSIÓN:\n{correccion}\n"
 
         from ..llm import MODEL_WRITE
-        r = llm.pedir_json(sistema, usuario, modelo=MODEL_WRITE,
-                           seco=local.guion(brief, ficha, premisa, escaleta) if llm.DRY else None,
-                           temperatura=0.35 if correccion else 0.65)
-        crudo = llm.parsear(r, "el guion")
-        parrafos = tomar_lista(crudo, ("parrafos", "paragraphs", "guion", "script",
-                                       "elementos", "lines"))
-        datos = {"parrafos": _normalizar_parrafos(parrafos),
-                 "vinculos": crudo.get("vinculos", []) if isinstance(crudo, dict) else []}
+        def validate(data):
+            contracts.guion(data, brief)
+            phrase = (brief["forma"].get("especificaciones") or "").strip('«»" ')
+            contracts._exigir(not phrase or any(
+                phrase in p["texto"] for p in data["parrafos"] if p["tipo"] == "dialogue"),
+                f"La frase obligatoria debe decirse literalmente en un párrafo dialogue: {phrase}")
+            from .p6_qa import comprobar_cuarta_pared
+            wall = comprobar_cuarta_pared(brief, data, escaleta)
+            contracts._exigir(wall["ok"], wall["requisito"])
+        crudo = llm.pedir_validado(sistema, usuario,
+            validate, esquema="p5_guion", modelo=MODEL_WRITE,
+            seco=None, temperatura=0.35 if correccion else 0.65)
+        datos = {"parrafos": crudo["parrafos"], "vinculos": crudo.get("vinculos", [])}
 
     datos["parrafos"] = _normalizar_parrafos(datos.get("parrafos", []), brief, escaleta)
     if not datos.get("parrafos"):

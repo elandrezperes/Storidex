@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "premisas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          "caracter": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "conflicto": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "desenlace": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "proposicion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "recurso_visual": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "razon_estrategica": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "usa_oportunidad": {
+            "type": "boolean"
+          },
+          "nivel": {
+            "enum": [
+              "T1",
+              "T2",
+              "T3",
+              "T4"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "caracter",
+          "conflicto",
+          "desenlace",
+          "proposicion",
+          "recurso_visual",
+          "razon_estrategica",
+          "usa_oportunidad",
+          "nivel"
+        ]
+      },
+      "minItems": 3,
+      "maxItems": 3
+    }
+  },
+  "required": [
+    "premisas"
+  ]
+}

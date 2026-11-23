@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
-from core import contracts, export_pdf, llm, referencias, services
+from core import audience, contracts, export_fdx, export_pdf, llm, referencias, services
 from core.phases import (
     p0_brief, p1_research, p2_persona, p3_premisas, p4_escaleta, p5_guion, p6_qa,
 )
@@ -90,12 +90,17 @@ def _public(project):
         "id": project["id"], "marca": project["brief"]["marca"]["nombre"],
         "demostracion": project["demostracion"],
         "investigado": "research" in project,
+        "investigacion": {"sin_busqueda": project.get("research", {}).get("sin_busqueda", False),
+                          "fuentes_total": project.get("research", {}).get("fuentes_total", 0)},
         "herramientas": project.get("research", {}).get("herramientas", {}),
         "services": {key: {**value, **{k: v for k, v in project.get("research", {}).get(
             "services", {}).get(key, {}).items() if k != "configured"}}
             for key, value in services.states().items()},
         "references": project.get("research", {}).get("dossier_referencias", {}).get("referencias", []),
         "frases": project.get("persona", {}).get("lenguaje", {}).get("diria", []),
+        "audiencia": {key: value for key, value in project.get("persona", {}).items()
+                      if key in {*audience.evidence.FIELDS, "version", "cobertura", "afirmaciones"}},
+        "segmento": project["brief"]["segmento"],
         "premisas": [{"id": p["id"], "proposicion": p["proposicion"],
                       **{key: p[key] for key in ("conflicto", "recurso_visual",
                                                 "desenlace", "razon_estrategica") if key in p},
@@ -165,8 +170,19 @@ def _advance(directory, action, data):
         _write(directory, "research", result)
     elif action == "persona" and "research" in project and "persona" not in project:
         persona = p2_persona.ejecutar(brief, project["research"])
+        persona["version"] = 1
         _write(directory, "persona_v1", persona)
         _write(directory, "persona", persona)
+    elif action == "audiencia" and "persona" in project and "premisas" not in project:
+        current = project["persona"]
+        if data.get("version") != current.get("version", 1):
+            raise RequestError("409 Conflict", "La ficha cambió. Reabre el proyecto antes de guardar.")
+        try:
+            updated, diff = audience.editar(current, data.get("campos"), brief)
+        except contracts.ContratoInvalido as exc:
+            raise RequestError("400 Bad Request", str(exc)) from exc
+        if diff:
+            _save_persona(directory, current, updated, diff)
     elif action == "premisas" and "persona" in project and "escaleta" not in project:
         count = project["regeneraciones"]
         if "premisas" in project and count >= 3:
@@ -177,9 +193,8 @@ def _advance(directory, action, data):
             if phrase not in persona["lenguaje"]["diria"]:
                 raise RequestError("400 Bad Request", "Elige una frase de la ficha.")
             persona = {**persona, "frase_validada": {"texto": phrase, "nivel": "T1"}}
-            _write(directory, "persona_v2", persona)
-            _write(directory, "persona_diff", {"frase_validada": persona["frase_validada"]})
-            _write(directory, "persona", persona)
+            _save_persona(directory, project["persona"], persona,
+                          {"frase_validada": persona["frase_validada"]})
         if "premisas" in project:
             _write(directory, "estado", {"regeneraciones": count + 1})
         context = p2_persona.inyectar(brief, persona)
@@ -213,6 +228,16 @@ def _advance(directory, action, data):
     else:
         raise RequestError("409 Conflict", "La acción no está disponible en esta fase.")
     return _public(_project(directory))
+
+
+def _save_persona(directory, previous, updated, diff):
+    version = previous.get("version", 1) + 1
+    updated["version"] = version
+    _write(directory, f"persona_v{version}", updated)
+    record = {"desde_version": version - 1, "version": version, "campos": diff}
+    _write(directory, f"persona_diff_v{version}", record)
+    _write(directory, "persona_diff", record)
+    _write(directory, "persona", updated)
 
 
 def _script(directory, project, action, data):
@@ -349,6 +374,11 @@ def _route(environ):
                     export_pdf.generar(project.get("edicion", project["guion"]),
                                        project["brief"], str(pdf))
                     return pdf.read_bytes(), "application/pdf", "guion.pdf"
+        if method == "GET" and action == "fdx":
+            project = _project(directory)
+            if project["entregado"]:
+                return (export_fdx.generar(project.get("edicion", project["guion"]),
+                                           project["brief"]), "application/xml", "guion.fdx")
         if method == "GET" and action == "audio":
             project = _project(directory)
             if project["entregado"]:
@@ -358,7 +388,7 @@ def _route(environ):
                         == "success" and audio.is_file()):
                     return audio.read_bytes(), "audio/mpeg", "lectura-sintetica.mp3"
         if method == "POST" and action in {
-            "investigar", "persona", "premisas", "escaleta", "preparar", "editar", "revisar", "voz", "canva",
+            "investigar", "persona", "audiencia", "premisas", "escaleta", "preparar", "editar", "revisar", "voz", "canva",
         }:
             data = _body(environ)
             try:
@@ -366,6 +396,10 @@ def _route(environ):
                     return _advance(directory, action, data)
             except RequestError:
                 raise
+            except llm.CosteExcedido as exc:
+                _record_error(directory, action, type(exc).__name__)
+                raise RequestError("409 Conflict", "Se alcanzó el presupuesto estimado de este proyecto. "
+                                   "Se conserva el trabajo y su diagnóstico; no se harán más llamadas.") from exc
             except Exception as exc:
                 _record_error(directory, action, type(exc).__name__)
                 raise RequestError("502 Bad Gateway", "No pudimos completar la operación. Inténtalo de nuevo.") from exc
