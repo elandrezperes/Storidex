@@ -473,3 +473,4 @@ guion sin ver el proceso, y el investigador pueda auditarlo después.
 | 2026-11-12 | Tono en tres niveles, por defecto «moderado» | Control sin abrir la puerta a la parodia |
 | 2026-11-12 | Duración como estimación doble, nunca medida | Honestidad metodológica |
 
+| 2026-11-23 | Pruebas automáticas en GitHub Actions | Cada cambio en main y pull request ejecuta pytest en Python 3.11, en modo seco y sin claves de proveedores. |

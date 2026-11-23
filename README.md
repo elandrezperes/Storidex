@@ -129,3 +129,23 @@ Genera `runs/<fecha>_<marca>/` con brief, research, persona, premisas, escaleta,
 guion, control de calidad, `.fdx` y PDF.
 
 
+
+## Pruebas automáticas en GitHub Actions
+
+El flujo **Pruebas de Storidex** ejecuta toda la carpeta `tests/` al actualizar
+`main`, al abrir o actualizar una pull request y al iniciarlo manualmente desde
+**Actions → Pruebas de Storidex → Run workflow**.
+
+Usa Python 3.11 en Linux, instala `requirements.txt` y ejecuta:
+
+```bash
+STORIDEX_DRY_RUN=true python -m pytest tests -q
+```
+
+La ejecución no recibe claves de proveedores. Las respuestas locales y simuladas
+permiten comprobar los contratos y las regresiones sin consumir APIs de IA.
+El resumen de cada ejecución muestra pruebas aprobadas, fallidas y omitidas.
+Un fallo deja la comprobación en rojo. El flujo no despliega la aplicación.
+
+Estos controles no sustituyen la validación de guiones con público y expertos
+ni verifican el acceso real a servicios externos.
