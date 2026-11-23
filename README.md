@@ -34,7 +34,7 @@ El coste depende de los modelos, las revisiones y los servicios activados.
 `trace.json` conserva la estimación por tokens y registra las llamadas externas
 por separado. El objetivo de coste debe comprobarse con ejecuciones reales.
 
-**Opcional — `GEMINI_API_KEY`:** activa la búsqueda de competencia real con fuentes
+**Opcional — `GEMINI_API_KEY`:** con cuota disponible y `STORIDEX_RESEARCH_ENABLED=true`, activa la búsqueda de competencia real con fuentes
 citables. Sin ella el sistema escribe igual y declara el análisis como no disponible,
 en lugar de inventarlo.
 
@@ -196,3 +196,33 @@ Un fallo deja la comprobación en rojo. El flujo no despliega la aplicación.
 
 Estos controles no sustituyen la validación de guiones con público y expertos
 ni verifican el acceso real a servicios externos.
+
+## Auditoría y piloto técnico
+
+La audiencia se revisa y puede corregirse antes de idear. Sus doce campos conservan
+procedencia, cobertura documental y versiones; una corrección del usuario no acredita
+veracidad. Los contratos están en `core/schemas/`. Las fases rechazan la prosa y
+reintentan una vez el contrato, con diagnóstico persistido. La autocrítica es obligatoria.
+La web permite descargar tanto PDF como Final Draft desde la edición guardada.
+
+El presupuesto se comprueba antes de cada petición, acumulado por directorio de
+ejecución. La estimación por tokens excluye búsquedas, servicios opcionales e
+infraestructura; el límite no equivale a un tope de facturación del proveedor.
+
+Ejecutar el piloto sin APIs:
+
+```bash
+python -m tools.piloto --sin-busqueda --output output/piloto-seco
+```
+
+Con credenciales del entorno, `--live` utiliza los modelos configurados. Cada carpeta
+de salida debe ser nueva: se conservan manifiesto con hashes, parámetros, entradas,
+versiones, costes estimados, resultados y guiones para revisión a ciegas. Un fallo
+se registra como fallo; nunca como entrega aprobada. El piloto técnico no mide
+preferencia humana ni duración real y no demuestra superioridad del modelo.
+
+Situación de investigación al 23 de noviembre de 2026: clave de Gemini configurada
+en Railway, modelo actualizado a 3.8 Flash y búsqueda desactivada por decisión del
+autor tras un rechazo por cuota. Se puede reactivar cuando haya cuota disponible.
+Canva, ElevenLabs, Firecrawl y vidIQ requieren credenciales propias del servidor;
+la autorización de sus conectores en el chat no sustituye esa configuración.

@@ -36,6 +36,9 @@ def test_contexto_y_forma_con_espacio_fijo(tmp_path, monkeypatch):
     _widget(app.button, "Generar guion →").click().run()
     assert not app.exception
     assert app.session_state["brief"]["espacio"]["local"] == "TALLER"
+    assert app.session_state["premisas"] is None
+    _widget(app.button, "Confirmar audiencia y generar premisas").click().run()
+    assert not app.exception
     assert len(app.session_state["premisas"]["premisas"]) == 3
     _widget(app.button, "Escribir el guion").click().run()
     assert not app.exception

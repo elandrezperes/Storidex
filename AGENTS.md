@@ -502,3 +502,16 @@ guion sin ver el proceso, y el investigador pueda auditarlo después.
 | 2026-11-19 | Adaptadores de servicios para el aplicativo | Investigación externa con caché y procedencia independiente, lectura sintética y exportación editable opcionales. Credenciales del servidor, sin reutilizar sesiones personales de Codex. |
 | 2026-11-23 | Pruebas automáticas en GitHub Actions | Cada cambio en main y pull request ejecuta pytest en Python 3.11, en modo seco y sin claves de proveedores. |
 | 2026-11-23 | Sincronización de las versiones local y GitHub | Se conservan espacio escénico, registro regional y compatibilidad con acceso y secretos de Streamlit, junto con trazabilidad, servicios opcionales y Actions. |
+
+| 2026-11-23 | Contratos JSON Schema, autocrítica obligatoria y edición versionada de audiencia | Se rechazan respuestas en prosa, edades fuera del segmento y personajes ajenos; un reintento de contrato conserva el diagnóstico. Web y Streamlit permiten corregir la ficha antes de idear. |
+| 2026-11-23 | Exportación web FDX y presupuesto acumulado previo a llamadas | Ambas exportaciones usan la edición guardada; la guarda estima tokens y limita salida sin prometer una factura exacta. |
+| 2026-11-23 | Gemini 3.8 Flash y búsqueda desactivada temporalmente por decisión del autor | Gemini 2.5 fue rechazado para la cuenta; 3.8 respondió cuota agotada. La clave queda en Railway y no se copia al repositorio. |
+| 2026-11-23 | Piloto técnico previo al estudio con participantes | Se congelan entradas, versiones, modelos efectivos y selección B; se comparan MIIA y prompt único enriquecido sin inventar evaluaciones humanas. |
+
+**Configuración efectiva del piloto de mantenimiento:** se conservan `gpt-4o-mini` en
+fases intermedias y `gpt-4o` en escritura, heredados del despliegue anterior. El
+manifiesto registra esos identificadores reales. La asignación GPT-6.1 de la tabla es
+la configuración objetivo y todavía requiere una migración y validación separadas;
+no debe describirse como modelo utilizado en este piloto. No se sustituye un modelo
+silenciosamente ante fallos. Las tarifas Gemini 3.8 registradas son las de noviembre
+de 2026 y deben revisarse cuando termine la promoción.

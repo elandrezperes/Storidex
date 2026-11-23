@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "perfil": {
+      "type": "object",
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "edad": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 70
+        },
+        "ocupacion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "barrio": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "nivel": {
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ]
+        }
+      },
+      "required": [
+        "nombre",
+        "edad",
+        "ocupacion",
+        "barrio",
+        "nivel"
+      ]
+    },
+    "consumo": {
+      "type": "object",
+      "properties": {
+        "cuando": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "donde": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "dispositivo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "nivel": {
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ]
+        }
+      },
+      "required": [
+        "cuando",
+        "donde",
+        "dispositivo",
+        "nivel"
+      ]
+    },
+    "conflicto": {
+      "type": "object",
+      "properties": {
+        "problema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "objecion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "detonante": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "nivel": {
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ]
+        }
+      },
+      "required": [
+        "problema",
+        "objecion",
+        "detonante",
+        "nivel"
+      ]
+    },
+    "lenguaje": {
+      "type": "object",
+      "properties": {
+        "diria": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 3,
+          "maxItems": 5
+        },
+        "no_diria": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "nivel": {
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ]
+        }
+      },
+      "required": [
+        "diria",
+        "no_diria",
+        "nivel"
+      ]
+    },
+    "anti_persona": {
+      "type": "object",
+      "properties": {
+        "quien_no_es": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "nivel": {
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4"
+          ]
+        }
+      },
+      "required": [
+        "quien_no_es",
+        "nivel"
+      ]
+    }
+  },
+  "required": [
+    "perfil",
+    "consumo",
+    "conflicto",
+    "lenguaje",
+    "anti_persona"
+  ]
+}

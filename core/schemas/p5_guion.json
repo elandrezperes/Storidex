@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "parrafos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "enum": [
+              "scene_heading",
+              "action",
+              "character",
+              "parenthetical",
+              "dialogue",
+              "transition",
+              "title"
+            ]
+          },
+          "texto": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "tipo",
+          "texto"
+        ]
+      },
+      "minItems": 4
+    }
+  },
+  "required": [
+    "parrafos"
+  ]
+}

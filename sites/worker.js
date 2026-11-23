@@ -24,8 +24,8 @@ export default {
       }
       return new Response(body, { headers });
     }
-    const read = /^\/api\/proyectos(?:\/[a-f0-9]{32}(?:\/(?:pdf|audio))?)?$/;
-    const write = /^\/api\/proyectos(?:\/[a-f0-9]{32}\/(?:investigar|persona|premisas|escaleta|preparar|editar|revisar|voz|canva))?$/;
+    const read = /^\/api\/proyectos(?:\/[a-f0-9]{32}(?:\/(?:pdf|fdx|audio))?)?$/;
+    const write = /^\/api\/proyectos(?:\/[a-f0-9]{32}\/(?:investigar|persona|audiencia|premisas|escaleta|preparar|editar|revisar|voz|canva))?$/;
     const post = request.method === "POST";
     if (!(post ? write.test(url.pathname) : request.method === "GET" && read.test(url.pathname))) {
       return error(404, "Página o acción no encontrada.");
@@ -66,7 +66,7 @@ export default {
         return error(502, "El servicio intentó redirigir la solicitud.");
       }
       const type = reply.headers.get("Content-Type");
-      if (!["application/json", "application/pdf", "audio/mpeg"].includes(type?.split(";")[0])) {
+      if (!["application/json", "application/pdf", "application/xml", "audio/mpeg"].includes(type?.split(";")[0])) {
         return error(502, "El servicio devolvió una respuesta inesperada.");
       }
       const outgoing = new Headers({ ...responseHeaders, "Content-Type": type });

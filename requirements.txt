@@ -3,6 +3,7 @@ openai>=1.60
 google-genai>=0.5
 python-dotenv>=1.0
 pytest>=8.0
+jsonschema>=4.21,<5
 
 # Sin dependencias que compilen: el export a PDF usa un escritor propio
 # (core/export_pdf.py), para que el proyecto corra en cualquier Python 3.9+.

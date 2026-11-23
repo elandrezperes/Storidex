@@ -29,7 +29,7 @@ def api(tmp_path, monkeypatch):
         headers = []
         body = b"".join(sites_backend.application(env, lambda status, fields: headers.append(status)))
         assert int(headers[0].split()[0]) == expected, body
-        return body if expected == 200 and path.endswith("/pdf") else json.loads(body)
+        return body if expected == 200 and path.endswith(("/pdf", "/fdx")) else json.loads(body)
 
     return call
 
@@ -122,7 +122,10 @@ def test_demostracion_completa_y_pdf_editado(api, name):
     pdf = api(path + "/pdf")
     assert pdf.startswith(b"%PDF") and pdf != original
     assert b"Texto guardado por el usuario" in pdf
-    api(path + "/fdx", expected=404)
+    from xml.etree import ElementTree
+    fdx = ElementTree.fromstring(api(path + "/fdx"))
+    assert fdx.tag == "FinalDraft"
+    assert any(node.text == texts[1] for node in fdx.iter("Text"))
 
 
 def test_compatibilidad_con_guion_ya_entregado(api, monkeypatch):

@@ -84,7 +84,7 @@ def ejecutar(brief: dict, premisa: dict, persona_txt: str) -> dict:
     if llm.DRY:
         datos = local.escaleta(brief, premisa)
     else:
-        sistema = llm.cargar_prompt("v3_escaleta.md")
+        sistema = llm.cargar_prompt("v4_escaleta.md")
         usuario = (
             "BRIEFING OBLIGATORIO\n" + json.dumps(referencias.brief_para_modelo(brief), ensure_ascii=False) + "\n\n"
             + persona_txt + "\n"
@@ -98,16 +98,24 @@ def ejecutar(brief: dict, premisa: dict, persona_txt: str) -> dict:
             "\"funcion\": \"hook\", \"descripcion\": \"\", "
             "\"cuarta_pared\": \"indirecta\", \"afirmaciones\": []}]}"
         )
-        r = llm.pedir_json(sistema, usuario, seco=local.escaleta(brief, premisa) if llm.DRY else None,
-                           temperatura=0.4)
-        crudo = llm.parsear(r, "la escaleta")
-        beats = tomar_lista(crudo, ("beats", "escaleta", "unidades", "structure",
-                                    "secuencia", "scenes"))
-        datos = {
-            "beats": _reconstruir(beats, dur, tipo, premisa.get("afirmaciones", [])),
-            "duracion_estimada_s": float(dur),
-            "cierre": "Rótulo de marca",
-        }
+        def validate(data):
+            contracts.escaleta(data)
+            from ..normaliza import tiempo_a_segundos
+            contracts._exigir(tiempo_a_segundos(data["beats"][-1]["tc_out"]) == dur,
+                              "La escaleta debe terminar en la duración objetivo.")
+            for i, beat in enumerate(data["beats"]):
+                allowed = {"directa"} if tipo == "publicitario" else {"indirecta"}
+                if tipo == "sketch" and i == len(data["beats"]) - 1:
+                    allowed.add("indirecta_con_tag")
+                contracts._exigir(beat["cuarta_pared"] in allowed,
+                    f"Beat {i+1}: cuarta_pared={beat['cuarta_pared']}; para {tipo} debe ser {sorted(allowed)}.")
+        from copy import deepcopy
+        schema = deepcopy(contracts._schema("p4_escaleta"))
+        schema["properties"]["beats"]["items"]["properties"]["cuarta_pared"]["enum"] = (
+            ["directa"] if tipo == "publicitario" else ["indirecta", "indirecta_con_tag"])
+        crudo = llm.pedir_validado(sistema, usuario, validate, esquema=schema, seco=None, temperatura=0.4)
+        datos = {"beats": crudo["beats"], "duracion_estimada_s": float(dur),
+                 "cierre": crudo.get("cierre", "")}
 
     if not datos.get("beats"):
         raise contracts.ContratoInvalido(

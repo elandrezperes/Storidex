@@ -67,8 +67,9 @@ def test_busqueda_contextual_solo_admite_referencias_del_grounding(monkeypatch):
     monkeypatch.setattr(llm, "DRY", False)
     url = "https://ads.tiktok.com/business/creativecenter/example"
     result = {
-        "competencia": {"de_marca": [], "de_feed": []},
+        "competencia": {"de_marca": [], "de_feed": [], "sin_datos": True},
         "mercado": {"tendencias": []},
+        "oportunidad": {"texto": "", "nivel": "T4"}, "fuentes_total": 0,
         "referencias_contextuales": [
             {"fuente": "tiktok", "url": url, "hallazgo": "Apertura con demostración"},
             {"fuente": "meta", "url": "https://fake.test", "hallazgo": "Sin respaldo"},

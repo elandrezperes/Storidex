@@ -49,9 +49,18 @@ def ejecutar(brief: dict) -> dict:
             {"fuentes_de_consulta": referencias.catalogo()["fuentes"]}, ensure_ascii=False
         )
         try:
-            r = llm.investigar(sistema, usuario, seco=_muestra(brief) if llm.DRY else None)
-            datos = llm.parsear(r, "el análisis de mercado")
-        except Exception:
+            for attempt in range(2):
+                r = llm.investigar(sistema, usuario, seco=_muestra(brief) if llm.DRY else None)
+                try:
+                    datos = llm.parsear(r, "el análisis de mercado")
+                    contracts.research(datos)
+                    break
+                except (llm.RespuestaInvalida, contracts.ContratoInvalido) as exc:
+                    if attempt:
+                        raise
+                    usuario += "\n" + str(llm.cargar_prompt("v1_corregir_contrato.md")) + "\n" + str(exc)
+        except Exception as exc:
+            llm.registrar_error("p1_research", RuntimeError(type(exc).__name__))
             llm.error_servicio("gemini")
             r = llm.Respuesta("{}", "sin-busqueda")
             datos = local.research(brief)

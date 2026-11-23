@@ -13,7 +13,7 @@ import tempfile
 import streamlit as st
 
 from core import export_fdx, export_pdf, levels, llm
-from core import referencias, services
+from core import audience, referencias, services
 from pathlib import Path
 from core.phases import (p0_brief, p1_research, p2_persona, p3_premisas,
                          p4_escaleta, p5_guion, p6_qa)
@@ -458,10 +458,9 @@ elif SS["pantalla"] == 3:
                 with st.spinner("Construyendo el destinatario…"):
                     fase["nombre"] = "construir el destinatario"
                     per = p2_persona.ejecutar(brief_ok, res)
-                with st.spinner("Proponiendo premisas…"):
-                    fase["nombre"] = "proponer las premisas"
-                    pre = p3_premisas.ejecutar(brief_ok, per, res,
-                                               p2_persona.inyectar(brief_ok, per))
+                per["version"] = 1
+                Path(ruta, "persona_v1.json").write_text(json.dumps(per, ensure_ascii=False, indent=2))
+                pre = None
         except llm.SinLlave as e:
             st.error(f"Falta la llave de API: {e}")
             st.stop()
@@ -476,6 +475,7 @@ elif SS["pantalla"] == 3:
             st.stop()
 
         SS.update(brief=brief_ok, ruta=ruta, research=res, persona=per, premisas=pre)
+        guardar_ejecucion()
         SS["pantalla"] = 4
         st.rerun()
 
@@ -525,6 +525,56 @@ else:
     st.markdown(f"**No le hablas a:** {per['anti_persona']['quien_no_es']}")
     with st.expander("Ficha completa con niveles de procedencia"):
         st.json(per)
+
+    if not SS["premisas"]:
+        if per.get("cobertura", {}).get("score", 0) < 0.4:
+            st.warning("Ficha débil: añade capturas o entrevistas cuando puedas. Puedes continuar con hipótesis visibles.")
+        changes = {}
+        with st.form("revision_audiencia"):
+            st.caption("La propuesta está preparada. Corrige solo lo que no reconozcas en tu público.")
+            labels = {
+                "perfil": {"nombre": "Nombre ilustrativo", "edad": "Edad de la audiencia",
+                           "ocupacion": "Ocupación", "barrio": "Zona o barrio"},
+                "consumo": {"cuando": "Cuándo ve contenido", "donde": "Dónde lo ve", "dispositivo": "Dispositivo"},
+                "conflicto": {"problema": "Qué problema encuentra", "objecion": "Qué le hace dudar", "detonante": "Qué le anima a actuar"},
+                "lenguaje": {"diria": "Frases que diría (una por línea)", "no_diria": "Frases que le sonarían falsas (una por línea)"},
+                "anti_persona": {"quien_no_es": "A quién no se dirige el guion"},
+            }
+            with st.expander("Revisar o corregir mi audiencia"):
+                for block, fields in labels.items():
+                    for name, label in fields.items():
+                        original = per[block][name]
+                        if name == "edad":
+                            value = st.selectbox(label, list(range(b["segmento"]["edad_min"], b["segmento"]["edad_max"]+1)),
+                                index=original-b["segmento"]["edad_min"])
+                        else:
+                            text = "\n".join(original) if isinstance(original, list) else original
+                            value = st.text_area(label, text, max_chars=4000)
+                            value = [v.strip() for v in value.splitlines() if v.strip()] if isinstance(original, list) else value.strip()
+                        if value != original:
+                            changes[f"{block}.{name}"] = value
+            phrase = st.radio("¿Qué frase se parece más a tu público?", ["Continuar sin elegir", *per["lenguaje"]["diria"]])
+            confirmed = st.form_submit_button("Confirmar audiencia y generar premisas")
+        if confirmed:
+            try:
+                updated, diff = audience.editar(per, changes, b)
+                if phrase != "Continuar sin elegir" and not changes:
+                    updated["frase_validada"] = {"texto": phrase, "nivel": "T1"}
+                    diff["frase_validada"] = updated["frase_validada"]
+                if diff:
+                    updated["version"] = per.get("version", 1) + 1
+                    directory = Path(SS["ruta"])
+                    (directory / f"persona_v{updated['version']}.json").write_text(json.dumps(updated,ensure_ascii=False,indent=2))
+                    (directory / f"persona_diff_v{updated['version']}.json").write_text(json.dumps(diff,ensure_ascii=False,indent=2))
+                SS["persona"] = updated
+                guardar_ejecucion()
+                with llm.auditar(SS["ruta"]), st.spinner("Proponiendo premisas…"):
+                    SS["premisas"] = p3_premisas.ejecutar(b, updated, res, p2_persona.inyectar(b, updated))
+                guardar_ejecucion()
+                st.rerun()
+            except Exception as exc:
+                st.error(f"No se pudo confirmar la audiencia: {exc}")
+        st.stop()
 
     # ---------------------------------------------------------- premisas
     st.divider()

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "duracion": {
+      "type": "object",
+      "properties": {
+        "por_timecodes_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "por_paginas_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "objetivo_s": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "por_timecodes_s",
+        "por_paginas_s",
+        "objetivo_s"
+      ]
+    },
+    "cuarta_pared": {
+      "type": "object"
+    },
+    "tono": {
+      "type": "object"
+    },
+    "nivel_global": {
+      "enum": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ]
+    }
+  },
+  "required": [
+    "duracion",
+    "cuarta_pared",
+    "tono",
+    "nivel_global"
+  ]
+}
