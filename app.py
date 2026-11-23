@@ -13,6 +13,8 @@ import tempfile
 import streamlit as st
 
 from core import export_fdx, export_pdf, levels, llm
+from core import referencias, services
+from pathlib import Path
 from core.phases import (p0_brief, p1_research, p2_persona, p3_premisas,
                          p4_escaleta, p5_guion, p6_qa)
 
@@ -335,6 +337,44 @@ elif SS["pantalla"] == 3:
         "Indicaciones para el guionista (opcional)",
         placeholder="Ej. Sin humor de doble sentido. El producto debe verse desde el primer segundo.")
 
+    recursos = st.text_area("Recursos de producción disponibles (opcional)")
+    with st.expander("Añadir evidencia del público"):
+        origen = st.selectbox("Origen", ["observacion", "declaracion_dueno"],
+                             format_func=lambda v: {
+                                 "observacion": "Observación documentada",
+                                 "declaracion_dueno": "Declaración del dueño",
+                             }[v])
+        informante = st.text_input("Informante o fuente")
+        fecha = st.date_input("Fecha de la evidencia", value=None)
+        fragmento = st.text_area("Fragmento registrado")
+    with st.expander("MÁS DETALLES"):
+        st.caption("Storidex utiliza el contexto y las referencias durante la generación por etapas. Puedes añadir material de forma opcional.")
+        fuentes = referencias.catalogo()["fuentes"]
+        for fuente in fuentes.values():
+            st.link_button(fuente["nombre"], fuente["url"], help=fuente["uso"])
+            st.write(fuente["descripcion"])
+            st.caption(fuente["aplicacion"])
+        total = st.number_input("Referencias que quieres registrar", 0, 12, 0)
+        fichas = []
+        for index in range(int(total)):
+            st.caption(f"Referencia {index + 1}")
+            fuente = st.selectbox("Fuente", list(fuentes), key=f"ref_fuente_{index}",
+                                 format_func=lambda key: fuentes[key]["nombre"])
+            url = st.text_input("Enlace de la pieza o consulta", key=f"ref_url_{index}")
+            fecha_ref = st.date_input("Fecha de consulta", value=None, key=f"ref_fecha_{index}")
+            mercado = st.text_input("País, ciudad o mercado", key=f"ref_mercado_{index}")
+            hallazgo = st.text_area("Qué observaste", max_chars=2000, key=f"ref_hallazgo_{index}")
+            fichas.append({"fuente": fuente, "url": url.strip(),
+                           "fecha": fecha_ref.isoformat() if fecha_ref else "",
+                           "mercado": mercado.strip(), "hallazgo": hallazgo.strip()})
+        trends_file = st.file_uploader("CSV de interés a lo largo del tiempo de Google Trends",
+                                       type=["csv"])
+        trends_csv = ""
+        if trends_file:
+            if trends_file.size <= 12000:
+                trends_csv = trends_file.getvalue().decode("utf-8-sig", errors="replace")
+            else:
+                st.warning("El CSV supera el máximo de 12 000 bytes.")
     tono = st.radio("Tono *", ["neutro", "moderado", "marcado"], index=1, horizontal=True,
                     help="Marcado usa vocabulario y giros locales sin caricatura.")
     duracion = st.radio("Duración *", [15, 30, 45, 60], index=1, horizontal=True,
@@ -379,6 +419,13 @@ elif SS["pantalla"] == 3:
         faltan.append("al menos un participante con nombre")
     elif not any(p["protagonico"] for p in participantes):
         faltan.append("marcar un participante como protagónico")
+    evidencia = []
+    if informante.strip() or fecha or fragmento.strip():
+        if informante.strip() and fecha and fragmento.strip():
+            evidencia.append({"origen": origen, "informante": informante.strip(),
+                              "fecha": fecha.isoformat(), "fragmento": fragmento.strip()})
+        else:
+            faltan.append("informante, fecha o fragmento del registro de evidencia")
     if faltan:
         st.warning("Falta " + ", ".join(faltan) + ".")
 
@@ -389,27 +436,32 @@ elif SS["pantalla"] == 3:
             "tipo": tipo,
             "especificaciones": especificaciones.strip(),
             "indicaciones": indicaciones.strip(),
+            "recursos": recursos.strip(),
             "tono": tono,
             "duracion_objetivo_s": duracion,
         }
         b["competencia"] = {"modo": competencia}
         b["espacio"] = espacio_brief
+        b["evidencia_publico"] = evidencia
+        b["referencias"] = fichas
+        b["trends_csv"] = trends_csv
 
         fase = {"nombre": "validar el briefing"}
         try:
             with st.spinner("Validando el briefing…"):
                 fase["nombre"] = "validar el briefing"
                 brief_ok, ruta = p0_brief.ejecutar(b)
-            with st.spinner("Analizando el mercado…"):
-                fase["nombre"] = "analizar el mercado"
-                res = p1_research.ejecutar(brief_ok)
-            with st.spinner("Construyendo el destinatario…"):
-                fase["nombre"] = "construir el destinatario"
-                per = p2_persona.ejecutar(brief_ok, res)
-            with st.spinner("Proponiendo premisas…"):
-                fase["nombre"] = "proponer las premisas"
-                pre = p3_premisas.ejecutar(brief_ok, per, res,
-                                           p2_persona.inyectar(brief_ok, per))
+            with llm.auditar(ruta):
+                with st.spinner("Analizando el mercado…"):
+                    fase["nombre"] = "analizar el mercado"
+                    res = p1_research.ejecutar(brief_ok)
+                with st.spinner("Construyendo el destinatario…"):
+                    fase["nombre"] = "construir el destinatario"
+                    per = p2_persona.ejecutar(brief_ok, res)
+                with st.spinner("Proponiendo premisas…"):
+                    fase["nombre"] = "proponer las premisas"
+                    pre = p3_premisas.ejecutar(brief_ok, per, res,
+                                               p2_persona.inyectar(brief_ok, per))
         except llm.SinLlave as e:
             st.error(f"Falta la llave de API: {e}")
             st.stop()
@@ -451,6 +503,16 @@ else:
             f'<span class="gris">{f["ejemplo"]}</span></div>', unsafe_allow_html=True)
     st.success(f"Oportunidad: {res['oportunidad']['texto']}")
 
+    with st.expander("Dossier de referencias de esta ejecución"):
+        st.json(res.get("dossier_referencias", {}))
+        for service in res.get("services", services.states()).values():
+            st.write(f"{service['name']} · " + {
+                "ready": "Disponible", "not_configured": "Pendiente de activación",
+                "success": "Consulta completada", "unavailable": "Consulta no disponible",
+                "no_relevant_data": "Sin referencias pertinentes", "skipped": "Sin consulta",
+            }.get(service["status"], service["status"]))
+            st.caption(service["purpose"])
+
     # ---------------------------------------------------------- persona
     st.markdown("#### A quién le hablas")
     st.caption(levels.resumen(per))
@@ -472,28 +534,34 @@ else:
             f'<div class="card"><b>{p["id"]}.</b> {p["proposicion"]}{badge(p["nivel"])}<br>'
             f'<span class="gris">{p["caracter"]}</span></div>', unsafe_allow_html=True)
 
+        if p.get("recurso_visual"):
+            st.caption(f"Conflicto · {p['conflicto']} | Recurso visual · {p['recurso_visual']} | "
+                       f"Desenlace · {p['desenlace']}")
+            st.write(p["razon_estrategica"])
+            for reference in p.get("referencias_creativas", []):
+                st.link_button(reference["id"], reference["url"])
+
     elegida = st.radio("Premisa", ["A", "B", "C"], horizontal=True,
                        index=["A", "B", "C"].index(SS["premisa_elegida"]))
 
-    # tope de guiones por sesión (protege los créditos si la app es pública)
     permitido, aviso_tope = auth.puede_generar(SS["guiones_sesion"])
     if aviso_tope and auth.tope_sesion() > 0:
         (st.caption if permitido else st.warning)(aviso_tope)
-
     if st.button("Escribir el guion", use_container_width=True, disabled=not permitido):
         prem = next(p for p in SS["premisas"]["premisas"] if p["id"] == elegida)
         txt = p2_persona.inyectar(b, per)
         try:
-            with st.spinner("Armando la escaleta…"):
-                esc = p4_escaleta.ejecutar(b, prem, txt)
-            with st.spinner("Escribiendo…"):
-                gu = p5_guion.ejecutar(b, per, prem, esc, txt)
-            qa = p6_qa.ejecutar(b, per, gu, esc)
-            if qa["hallazgos"]:
-                with st.spinner("Corrigiendo lo que marca el control…"):
-                    gu = p5_guion.ejecutar(b, per, prem, esc, txt,
-                                           correccion=p6_qa.correccion_para(gu, qa))
-                    qa = p6_qa.ejecutar(b, per, gu, esc)
+            with llm.auditar(SS["ruta"]):
+                with st.spinner("Armando la escaleta…"):
+                    esc = p4_escaleta.ejecutar(b, prem, txt)
+                with st.spinner("Escribiendo…"):
+                    gu = p5_guion.ejecutar(b, per, prem, esc, txt)
+                qa = p6_qa.revisar_brief(b, per, gu, esc)
+                if qa["hallazgos"]:
+                    with st.spinner("Corrigiendo lo que marca el control…"):
+                        gu = p5_guion.ejecutar(b, per, prem, esc, txt,
+                                               correccion=p6_qa.correccion_para(gu, qa))
+                        qa = p6_qa.revisar_brief(b, per, gu, esc)
         except llm.CosteExcedido as e:
             st.error(f"Se detuvo por control de gasto: {e}")
             st.stop()
@@ -502,7 +570,7 @@ else:
             with st.expander("Detalle técnico"):
                 st.code(f"{type(e).__name__}: {e}")
             st.stop()
-        SS["guiones_sesion"] = SS.get("guiones_sesion", 0) + 1
+        SS["guiones_sesion"] += 1
         SS.update(premisa_elegida=elegida, escaleta=esc, guion=gu, qa=qa)
         guardar_ejecucion()
         st.rerun()
@@ -546,9 +614,39 @@ else:
             for h in qa["hallazgos"]:
                 st.warning(h)
         else:
-            st.success("Todas las verificaciones pasan.")
+            st.success("Las comprobaciones ejecutadas no encontraron incumplimientos.")
         st.caption("Ambas cifras son estimaciones: una suma los códigos de tiempo de la "
                    "escaleta, la otra aplica la convención de una página por minuto.")
+
+        for aviso in qa.get("avisos_estimacion", []):
+            st.info(aviso)
+        with st.expander("Trazabilidad y revisión humana"):
+            st.json(SS["guion"].get("trazabilidad", {}))
+            claims = per.get("afirmaciones", {})
+            with st.form("revision_humana"):
+                revisor = st.text_input("Revisor")
+                ensayo = st.selectbox("Registro", ["Lectura cronometrada", "Animatic", "Dictamen sobre una afirmación"])
+                campo = st.selectbox("Afirmación", ["", *claims])
+                decision = st.selectbox("Dictamen", ["aceptada", "corregida", "retirada"])
+                nota = st.text_input("Corrección o nota")
+                segundos = st.number_input("Segundos del ensayo", min_value=0.0, step=0.1)
+                if st.form_submit_button("Guardar revisión"):
+                    registro = {"revisor": revisor}
+                    if ensayo == "Dictamen sobre una afirmación":
+                        registro.update(afirmacion=campo, decision=decision, nota=nota)
+                    else:
+                        registro.update(metodo="animatic" if ensayo == "Animatic" else "lectura",
+                                        segundos=segundos)
+                    try:
+                        revision = p6_qa.revision_humana(registro, per)
+                    except ValueError as error:
+                        st.error(str(error))
+                    else:
+                        qa.setdefault("revision_humana", []).append(revision)
+                        guardar_ejecucion()
+                        st.success("Revisión guardada.")
+            for revision in qa.get("revision_humana", []):
+                st.write(revision)
 
         # exportar
         st.markdown("#### Exportar")
@@ -570,6 +668,24 @@ else:
 
         with st.expander("Ver la escaleta"):
             st.json(SS["escaleta"])
+        with st.expander("Escuchar o llevar a Canva"):
+            st.caption("Opcional. Usa los créditos del servicio configurado. La voz sintética solo lee el diálogo.")
+            directory = Path(SS["ruta"])
+            script = SS["guion"]
+            media = services.media_state(directory, script)
+            for provider, action, label in (("elevenlabs", "voz", "Preparar lectura sintética"),
+                    ("canva", "canva", "Crear o consultar copia en Canva")):
+                if st.button(label, disabled=not services.states()[provider]["configured"]):
+                    try:
+                        with llm.auditar(directory), st.spinner("Preparando…"):
+                            media = services.production(directory, b, script, action)
+                    except llm.ServicioNoDisponible as exc:
+                        st.warning(str(exc))
+            if media.get("elevenlabs", {}).get("status") == "success":
+                st.audio((directory / f"speech_{services.media_id(script)}.mp3").read_bytes())
+                st.caption(media["elevenlabs"]["scope"])
+            if media.get("canva", {}).get("edit_url"):
+                st.link_button("Abrir copia editable en Canva", media["canva"]["edit_url"])
         with st.expander("Ver el control de calidad"):
             st.json(SS["qa"])
         if SS["ruta"]:
@@ -579,9 +695,6 @@ else:
     if st.button("← Crear otro guion", use_container_width=True):
         reiniciar()
         st.rerun()
-
-
-
 
 
 

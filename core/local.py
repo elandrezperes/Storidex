@@ -309,6 +309,9 @@ def premisas(brief: dict, ficha: dict) -> dict:
         {"id": "A",
          "caracter": f"{prota}, que carga todos los días con lo mismo",
          "conflicto": lex["problema"],
+         "recurso_visual": "Un objeto que pasa de mano en mano",
+         "razon_estrategica": "Hacer visible el problema cotidiano",
+         "afirmaciones": ["conflicto.problema"],
          "desenlace": f"encuentra en {marca} algo que le devuelve un minuto",
          "proposicion": (f"{prota} vive con un problema —{lex['problema']}— "
                          f"hasta que {marca} le devuelve el control."),
@@ -316,6 +319,9 @@ def premisas(brief: dict, ficha: dict) -> dict:
         {"id": "B",
          "caracter": f"{prota}, que ya probó algo parecido y no le sirvió",
          "conflicto": lex["objecion"],
+         "recurso_visual": "Una comparación en plano fijo",
+         "razon_estrategica": "Dramatizar la objeción antes de resolverla",
+         "afirmaciones": ["conflicto.objecion"],
          "desenlace": lex["detonante"],
          "proposicion": (f"{prota} no le da otra oportunidad a {marca} —{lex['objecion']}— "
                          f"hasta que descubre que hace justo lo que necesitaba."),
@@ -323,6 +329,9 @@ def premisas(brief: dict, ficha: dict) -> dict:
         {"id": "C",
          "caracter": "Alguien que no es el público habitual",
          "conflicto": lex["anti"],
+         "recurso_visual": "Dos reacciones ante el mismo objeto",
+         "razon_estrategica": "Delimitar para quién es la propuesta",
+         "afirmaciones": ["anti_persona.quien_no_es"],
          "desenlace": f"entiende para quién es {marca} al ver a quién no le habla",
          "proposicion": (f"Un destinatario ajeno —{lex['anti']}— descubre que {marca} "
                          f"no es para él, y eso define el mensaje."),
@@ -343,20 +352,9 @@ def _tc(seg: int) -> str:
 
 
 def escaleta(brief: dict, premisa: dict) -> dict:
-    from . import espacio as esp_mod
-
     dur = brief["forma"]["duracion_objetivo_s"]
     tipo = brief["forma"]["tipo"]
     cp = "directa" if tipo == "publicitario" else "indirecta"
-
-    # el espacio se hereda del briefing si está fijado; si no, se sugiere por rubro
-    esp = brief.get("espacio") or {"modo": "auto"}
-    if esp.get("modo") == "fijo":
-        espacio = {k: esp[k] for k in ("tipo", "local", "momento")}
-    else:
-        rubro = clasificar(brief["marca"].get("producto", ""),
-                           brief["marca"].get("nombre", ""))
-        espacio = esp_mod.sugerido(rubro, brief["ubicacion"].get("ciudad", ""))
 
     hook = min(3, max(2, dur // 6))
     resto = dur - hook
@@ -385,7 +383,6 @@ def escaleta(brief: dict, premisa: dict) -> dict:
         beats.append({
             "tc_in": _tc(cortes[i]), "tc_out": _tc(cortes[i + 1]),
             "funcion": f, "descripcion": descripciones[f],
-            "espacio": dict(espacio),
             "cuarta_pared": ("indirecta_con_tag" if (f == "cierre" and tipo == "sketch") else cp),
         })
     return {"beats": beats, "duracion_estimada_s": float(dur),
@@ -408,23 +405,11 @@ def guion(brief: dict, ficha: dict, premisa: dict, esc: dict) -> dict:
     if not frase:
         frase = f"{marca}, para lo de todos los días."
 
+    tiempos = [beat["tc_in"] for beat in esc["beats"]]
     par = {"tipo": "parenthetical", "texto": "(a cámara)"} if tipo == "publicitario" else None
 
-    # el espacio viene de la escaleta; si no, se sugiere por rubro
-    from . import espacio as esp_mod
-    beats_esp = (esc or {}).get("beats") or []
-    espacio = beats_esp[0].get("espacio") if beats_esp else None
-    if not espacio:
-        esp_brief = brief.get("espacio") or {"modo": "auto"}
-        if esp_brief.get("modo") == "fijo":
-            espacio = {k: esp_brief[k] for k in ("tipo", "local", "momento")}
-        else:
-            espacio = esp_mod.sugerido(cat, brief["ubicacion"].get("ciudad", ""))
-    enc = esp_mod.encabezado(espacio)
-
     p: list[dict] = [
-        {"tipo": "scene_heading", "tc": "00:00", "texto": f"HOOK — {enc}",
-         "espacio": dict(espacio)},
+        {"tipo": "scene_heading", "tc": "00:00", "texto": f"HOOK — {lex['escena']}"},
         {"tipo": "action",
          "texto": f"{prota}, {ficha['perfil']['edad']}, {lex['accion']}."},
         {"tipo": "character", "texto": prota},
@@ -442,8 +427,7 @@ def guion(brief: dict, ficha: dict, premisa: dict, esc: dict) -> dict:
     else:
         p += [
             {"tipo": "transition", "texto": "CORTE A:"},
-            {"tipo": "scene_heading", "tc": "00:09", "texto": enc,
-             "espacio": dict(espacio)},
+            {"tipo": "scene_heading", "tc": tiempos[1], "texto": lex["escena"]},
             {"tipo": "action", "texto": "Se le nota la duda en la cara."},
             {"tipo": "character", "texto": prota},
         ]
@@ -467,7 +451,7 @@ def guion(brief: dict, ficha: dict, premisa: dict, esc: dict) -> dict:
     # llamado a la acción cuando el briefing lo pide
     if {"cta", "ventas", "seguidores"} & objetivo:
         cta = {"ventas": f"Pide el tuyo en {marca}.",
-               "cta": f"Escríbenos y te contamos.",
+               "cta": f"Escribe y te contamos.",
                "seguidores": "Síguenos para más."}
         clave = next((k for k in ("ventas", "cta", "seguidores") if k in objetivo), "cta")
         p += [
@@ -476,17 +460,18 @@ def guion(brief: dict, ficha: dict, premisa: dict, esc: dict) -> dict:
         ]
 
     p += [
-        {"tipo": "scene_heading", "tc": "00:25", "texto": f"CIERRE — {enc}",
-         "espacio": dict(espacio)},
+        {"tipo": "scene_heading", "tc": tiempos[-1], "texto": "CIERRE — RÓTULO"},
         {"tipo": "action", "texto": lex["cierre"]},
         {"tipo": "title", "texto": marca.upper()},
         {"tipo": "transition", "texto": "CORTE A NEGRO."},
     ]
 
-    if tono == "marcado":
-        for parrafo in p:
-            if parrafo["tipo"] == "dialogue" and "vos" not in parrafo["texto"]:
-                parrafo["texto"] = parrafo["texto"].replace("usted", "vos")
+    for participant in brief["forma"]["participantes"]:
+        name = participant["nombre"].upper()
+        if name != prota:
+            p.insert(2, {"tipo": "action", "texto": f"{name} acerca el producto a {prota}."})
+    if message := brief["forma"].get("mensaje_clave"):
+        p.insert(-1, {"tipo": "title", "texto": message})
 
     return {"parrafos": p,
             "meta": {"duracion_objetivo_s": dur, "tipo": tipo, "tono": tono,
@@ -531,7 +516,4 @@ def research(brief: dict) -> dict:
         "fuentes_total": 0,
         "generado_localmente": True,
     }
-
-
-
 

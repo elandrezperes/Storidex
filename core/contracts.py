@@ -41,8 +41,37 @@ def brief(d: dict) -> dict:
             "La duración debe ser 15, 30, 45 o 60 segundos.")
     _exigir(len(forma.get("participantes", [])) >= 1,
             "Debe declararse al menos un participante.")
+    nombres = [p.get("nombre", "").strip().casefold() for p in forma["participantes"]]
+    _exigir(all(nombres) and len(set(nombres)) == len(nombres),
+            "Cada participante debe tener un nombre distinto.")
     _exigir(any(p.get("protagonico") for p in forma["participantes"]),
             "Debe haber un participante protagónico.")
+
+    _exigir(isinstance(forma.get("recursos", ""), str),
+            "Describe los recursos disponibles con texto.")
+    sources = d.get("evidencia_publico", [])
+    _exigir(isinstance(sources, list) and len(sources) <= 20,
+            "Se admiten hasta 20 registros de evidencia del público.")
+    for source in sources:
+        _exigir(isinstance(source, dict)
+                and source.get("origen") in ("observacion", "declaracion_dueno")
+                and all(isinstance(source.get(key), str) and source[key].strip()
+                        for key in ("informante", "fecha", "fragmento")),
+                "Cada evidencia requiere origen, informante, fecha y fragmento.")
+
+    from . import referencias
+    try:
+        referencias.validar(d)
+    except ValueError as exc:
+        raise ContratoInvalido(str(exc)) from exc
+
+    if "espacio" in d:
+        space = d["espacio"]
+        _exigir(isinstance(space, dict) and space.get("modo") in {"auto", "fijo"},
+                "El modo de espacio debe ser auto o fijo.")
+        if space.get("modo") == "fijo":
+            from . import espacio
+            _exigir(not espacio.validar(space), "Completa el tipo, la localización y el momento del espacio.")
 
     objetivo = d.get("objetivo") or []
     _exigir(len(objetivo) >= 1, "Debe elegirse al menos un objetivo del video.")
@@ -51,14 +80,6 @@ def brief(d: dict) -> dict:
 
     modo = d.get("competencia", {}).get("modo", "ambas")
     _exigir(modo in ("marca", "feed", "ambas", "ninguna"), "Modo de competencia no válido.")
-
-    # espacio escénico: si está declarado, debe ser válido
-    esp = d.get("espacio") or {"modo": "auto"}
-    _exigir(esp.get("modo") in ("auto", "fijo"),
-            "El modo de espacio debe ser «auto» o «fijo».")
-    if esp.get("modo") == "fijo":
-        _exigir(bool(str(esp.get("local", "")).strip()),
-                "Falta la localización del espacio escénico.")
     return d
 
 
@@ -112,14 +133,6 @@ def escaleta(d: dict) -> dict:
 
     _exigir(seg(beats[0]["tc_out"]) - seg(beats[0]["tc_in"]) <= 3,
             "El gancho no puede durar más de tres segundos.")
-
-    # cada unidad debe declarar un espacio escénico válido
-    from . import espacio as esp_mod
-    for b in beats:
-        problemas = esp_mod.validar(b.get("espacio"))
-        _exigir(not problemas,
-                f"La unidad «{b.get('funcion')}» tiene un espacio inválido: "
-                + " ".join(problemas))
     return d
 
 
@@ -143,7 +156,5 @@ def qa(d: dict) -> dict:
     for k in ("duracion", "cuarta_pared", "tono", "nivel_global"):
         _exigir(k in d, f"Falta «{k}» en el control de calidad.")
     return d
-
-
 
 

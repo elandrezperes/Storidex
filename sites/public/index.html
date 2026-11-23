@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storidex · Modelo MIIA</title>
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="Storidex, inicio"><span class="brand-mark">S</span><span>STORIDEX</span></a>
+  <p class="brand-description">Guiones que saben<br>a quién le hablan.</p>
+  <nav aria-label="Etapas de creación">
+    <ol class="steps">
+      <li data-step="1"><span class="step-marker"></span><span>Contexto<small>Tu marca y tu público</small></span></li>
+      <li data-step="2"><span class="step-marker"></span><span>Forma<small>Cómo quieres contarlo</small></span></li>
+      <li data-step="3"><span class="step-marker"></span><span>Público<small>Una voz reconocible</small></span></li>
+      <li data-step="4"><span class="step-marker"></span><span>Premisas y guion<small>De la idea a la escena</small></span></li>
+    </ol>
+  </nav>
+  <div class="sidebar-footer"><span class="status-dot"></span> Modelo MIIA<p>Prototipo de investigación</p></div>
+</aside>
+<main>
+<div class="workspace-bar"><span>Espacio de creación</span><span>Reels · 15–60 s</span></div>
+<p id="notice" role="status" aria-live="polite"></p>
+<section id="home">
+  <div class="page-heading"><h1>Guiones que saben<br>a quién le hablan.</h1><p>Empieza con tu negocio. Dale forma a una historia para tu público.</p></div>
+  <div class="home-layout">
+    <button id="start" class="new-project"><span class="document-symbol" aria-hidden="true">▤</span><span><strong>Nuevo guion</strong><small>Contexto · Forma · Premisas</small></span><span class="card-arrow" aria-hidden="true">↗</span></button>
+    <div class="recent-projects"><h2>Tus proyectos</h2><ul id="projects"></ul></div>
+  </div>
+</section>
+<form id="brief" hidden>
+  <section id="context">
+    <div class="page-heading"><p class="eyebrow">PASO 1 DE 4</p><h1>Contexto</h1><p>Cuéntanos qué ofreces y a quién quieres llegar.</p></div>
+    <div class="context-layout">
+      <div class="form-column">
+        <fieldset class="panel"><legend>Tu marca</legend>
+          <label>Nombre de la marca<input name="marca" required maxlength="200" placeholder="¿Cómo se llama tu negocio?"></label>
+          <label>Producto o servicio<input name="producto" required maxlength="500" placeholder="¿Qué quieres mostrar en este video?"></label>
+          <label>Sitio web (opcional)<input name="sitio" maxlength="500" placeholder="www.tumarca.com"></label>
+        </fieldset>
+        <fieldset class="panel"><legend>Ubicación del público</legend>
+          <label>País<select name="pais" required></select></label>
+          <div class="grid"><label>Provincia o estado<span id="province"></span></label><label>Ciudad<span id="city"></span></label></div>
+        </fieldset>
+      </div>
+      <div class="form-column">
+        <fieldset class="panel"><legend>A quién le hablas</legend>
+          <div class="age-field"><label for="age-min">Rango de edad <output id="ages">25–40 años</output></label><div class="age-range"><input id="age-min" name="min" aria-label="Edad mínima" type="range" min="18" max="70" value="25"><input id="age-max" name="max" aria-label="Edad máxima" type="range" min="18" max="70" value="40"></div><small>De 18 a 70 años · arrastra los extremos</small></div>
+          <div class="grid audience-fields"><label>Sexo<select name="sexo"><option value="ambos">Ambos</option><option value="f">Femenino</option><option value="m">Masculino</option></select></label><label>Segmento socioeconómico<select name="nse"><option>Clase alta</option><option selected>Clase media alta</option><option>Clase media baja</option><option>Clase baja</option></select></label></div>
+        </fieldset>
+        <fieldset class="panel objectives"><legend>Objetivo del video</legend><p>¿Qué quieres que ocurra después de verlo?</p>
+          <div class="chips">
+            <label><input type="checkbox" name="objetivo" value="views"><span>Visualizaciones</span></label>
+            <label><input type="checkbox" name="objetivo" value="cta"><span>Contacto</span></label>
+            <label><input type="checkbox" name="objetivo" value="ventas"><span>Ventas</span></label>
+            <label><input type="checkbox" name="objetivo" value="seguidores"><span>Seguidores</span></label>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+    <div class="form-actions"><small>El sitio web es opcional.</small><button type="button" id="next">Continuar a Forma <span aria-hidden="true">→</span></button></div>
+  </section>
+  <section id="shape" hidden>
+    <div class="page-heading"><p class="eyebrow">PASO 2 DE 4</p><h1>Forma</h1><p>Elige quién aparece y cómo se cuenta tu historia.</p></div>
+    <div class="shape-layout">
+      <div class="form-column">
+        <fieldset class="panel cast-panel"><legend>Participantes</legend><div id="cast"></div><button type="button" id="add" class="secondary dashed">+ Añadir participante</button></fieldset>
+        <fieldset class="panel"><legend>Tipo de video</legend><div class="type-options">
+          <label class="type-option"><input type="radio" name="tipo" value="sketch" checked><span><strong>Sketch</strong><small>La acción cuenta la historia</small></span></label>
+          <label class="type-option"><input type="radio" name="tipo" value="publicitario"><span><strong>Publicitario</strong><small>Se habla a cámara</small></span></label>
+        </div></fieldset>
+        <fieldset class="panel"><legend>Tono y duración</legend>
+          <label>Tono<select name="tono"><option value="neutro">Neutro</option><option selected value="moderado">Moderado</option><option value="marcado">Marcado</option></select></label>
+          <label>Duración objetivo<select name="duracion"><option value="15">15 s</option><option selected value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></label>
+        </fieldset>
+      </div>
+      <div class="form-column">
+        <fieldset class="panel"><legend>Lo que debe estar</legend>
+          <label>Mensaje clave (opcional)<textarea name="mensaje" maxlength="600" placeholder="Una idea que quieres que recuerden"></textarea></label>
+          <label>Frase obligatoria (opcional)<textarea name="frase" maxlength="1200" placeholder="La frase que debe decirse literalmente"></textarea></label>
+          <label>Indicaciones (opcional)<textarea name="indicaciones" maxlength="3000" placeholder="Tono, acciones o detalles que quieres cuidar"></textarea></label>
+          <label>Recursos de producción disponibles (opcional)<textarea name="recursos" maxlength="1500" placeholder="Locación, utilería, equipo o material de archivo"></textarea></label>
+        </fieldset>
+        <fieldset class="panel"><legend>Contexto del mercado</legend><label>Competencia<select name="competencia"><option value="ambas">Marcas y contenido del feed</option><option value="marca">Otras marcas</option><option value="feed">Contenido del feed</option><option value="ninguna">Omitir</option></select></label><p class="field-note">Storidex busca referentes para orientar la historia durante el análisis.</p></fieldset>
+      </div>
+    </div>
+    <div class="advanced-options">
+      <details><summary>Añadir evidencia del público</summary><div class="details-body"><label>Origen<select name="origen"><option value="observacion">Observación documentada</option><option value="declaracion_dueno">Declaración del dueño</option></select></label><div class="grid"><label>Informante o fuente<input name="informante" maxlength="200"></label><label>Fecha<input name="fecha_evidencia" type="date"></label></div><label>Fragmento registrado<textarea name="fragmento" maxlength="2500"></textarea></label></div></details>
+      <details><summary class="more-details">MÁS DETALLES</summary><div class="details-body"><p>Conoce para qué sirve cada fuente y aporta material si lo deseas.</p><ul id="reference-sources"></ul>
+        <details><summary>Aportar una referencia o una consulta propia (opcional)</summary><div id="reference-rows"></div><button type="button" id="add-reference" class="secondary">Añadir referencia</button><label>CSV de interés a lo largo del tiempo de Google Trends<input type="file" name="trends_csv" accept=".csv,text/csv"></label></details>
+      </div></details>
+    </div>
+    <div class="form-actions"><button type="button" id="back" class="text-button">← Volver a Contexto</button><button type="submit">Analizar <span aria-hidden="true">→</span></button></div>
+  </section>
+</form>
+<section id="result" hidden></section>
+<button id="home-link" class="text-button" hidden>← Volver a proyectos</button>
+<footer class="workspace-footer">Storidex · Modelo Inteligente de Ideación Audiovisual</footer>
+</main>
+</div>
+</body>
+</html>

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 
-from .. import contracts, llm
+from .. import contracts, evidence, llm
 from ..levels import T4, confianza
 
 GENERICAS = ("le gusta la música", "busca calidad", "valora la confianza",
@@ -45,13 +45,18 @@ def ejecutar(brief: dict, research: dict) -> dict:
         '"anti_persona":{"quien_no_es":"","nivel":"T4"}}'
     )
 
-    r = llm.pedir_json(llm.cargar_prompt("v1_persona.md"), usuario,
+    sources = brief.get("evidencia_publico", [])
+    catalog = {f"E{i}": source for i, source in enumerate(sources, 1)}
+    usuario += "\n\n" + json.dumps({"evidencia_publico": catalog}, ensure_ascii=False)
+    r = llm.pedir_json(llm.cargar_prompt("v2_persona.md"), usuario,
                        seco=_seco(brief) if llm.DRY else None, temperatura=0.9)
     ficha = _reparar(llm.parsear(r, "la ficha de persona"), brief)
     ficha = _autocritica(ficha, brief)
     ficha = _reparar(ficha, brief)          # segunda pasada, por si la corrección vino a medias
     contracts.persona(ficha, brief)
-    ficha["confianza"] = confianza(ficha)
+    evidence.annotate(ficha, sources)
+    ficha["cobertura"] = confianza(ficha)
+    ficha["confianza"] = ficha["cobertura"].copy()
     return ficha
 
 
@@ -140,13 +145,25 @@ def _autocritica(ficha: dict, brief: dict) -> dict:
           "sin clichés publicitarios."
     )
     try:
-        r = llm.pedir_json(llm.cargar_prompt("v1_persona.md"), usuario,
+        r = llm.pedir_json(llm.cargar_prompt("v2_persona.md"), usuario,
                            seco=ficha, temperatura=0.9)
         corregida = llm.parsear(r, "la ficha corregida")
         # se conserva la estructura original si el modelo omitió algún bloque
         for bloque in ("perfil", "consumo", "conflicto", "lenguaje", "anti_persona"):
             if bloque not in corregida:
                 corregida[bloque] = ficha[bloque]
+        original_refs = ficha.get("referencias")
+        if isinstance(original_refs, dict):
+            preserved = {}
+            for block, fields in evidence.FIELDS.items():
+                for field in fields:
+                    key = f"{block}.{field}"
+                    if (key in original_refs
+                            and corregida[block].get(field) == ficha[block].get(field)):
+                        preserved[key] = original_refs[key]
+            corregida["referencias"] = preserved
+        else:
+            corregida.pop("referencias", None)
         return corregida
     except Exception:  # noqa: BLE001
         return ficha
@@ -176,6 +193,7 @@ def inyectar(brief: dict, ficha: dict) -> str:
     f = ficha
     return (
         "PERSONA A LA QUE LE HABLAS\n"
+        f"{evidence.context(f)}\n"
         f"{f['perfil']['nombre']}, {f['perfil']['edad']}, {f['perfil']['ocupacion']}, "
         f"{f['perfil'].get('barrio','')}.\n"
         f"Consume: {f['consumo']['cuando']} — {f['consumo']['donde']}.\n"
